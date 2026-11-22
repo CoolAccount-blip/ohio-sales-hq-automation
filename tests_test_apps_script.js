@@ -50,7 +50,7 @@ prospects.formulas[9][18] = '=IF(A10=\"\",\"\",A10)';
 let uuid = 0;
 const context = {
   SpreadsheetApp: {getActiveSpreadsheet:()=>ss, openById:(id)=>{assert.strictEqual(id,'test-spreadsheet-id');return ss;}},
-  PropertiesService: {getScriptProperties:()=>({getProperty:(key)=>scriptProperties[key] || (key === 'WEBHOOK_SECRET' ? 'secret' : ''), setProperty:(key,value)=>{scriptProperties[key]=value;}})},
+  PropertiesService: {getScriptProperties:()=>({getProperty:(key)=>Object.prototype.hasOwnProperty.call(scriptProperties,key) ? scriptProperties[key] : (key === 'WEBHOOK_SECRET' ? 'secret' : null), setProperty:(key,value)=>{scriptProperties[key]=value;}, deleteProperty:(key)=>{delete scriptProperties[key];}})},
   LockService: {getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})},
   Utilities: {getUuid:()=>`uuid-${++uuid}`,formatDate:()=> '20261122_120000'},
   Session: {getScriptTimeZone:()=> 'UTC'},
@@ -59,7 +59,14 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(__dirname+'/apps_script_receiver.gs','utf8'),context);
+vm.runInContext(fs.readFileSync(__dirname+'/CommandCenter.gs','utf8'),context);
 context.setupAutomation();
+const defaultResearchSettings = context.getEmailResearchSettings_();
+assert.strictEqual(defaultResearchSettings.enabled, true, 'public email research should default enabled');
+assert.strictEqual(defaultResearchSettings.runsPerDay, 4, 'default research frequency should be four runs per day');
+assert.strictEqual(defaultResearchSettings.batchSize, 50, 'default email research batch should be 50');
+assert.strictEqual(defaultResearchSettings.pagesPerSite, 5, 'default site page depth should be five');
+assert.strictEqual(defaultResearchSettings.retryHours, 24, 'default retry interval should be 24 hours');
 assert.strictEqual(scriptProperties.OHIO_AUTOMATION_SPREADSHEET_ID, 'test-spreadsheet-id', 'setup should save spreadsheet ID for web app calls');
 assert.strictEqual(context.getAutomationSpreadsheet_(), ss, 'web app should open target spreadsheet by saved ID');
 const autoHeader = prospects.getRange(1,1,1,prospects.getLastColumn()).getDisplayValues()[0].indexOf('Automation ID') + 1;
@@ -150,9 +157,21 @@ function appendScoredProspect(name, score) {
 }
 appendScoredProspect('Lower Score Prospect', 25);
 appendScoredProspect('Higher Score Prospect', 95);
+scriptProperties.OHIO_EMAIL_RESEARCH_LAST_RUN_AT = '';
 const prioritized = context.getEmailQueue_(40);
 assert.strictEqual(prioritized.records[0].business_name, 'Higher Score Prospect', 'highest lead-score existing prospect should be researched first');
 assert.strictEqual(prioritized.records[1].business_name, 'Lower Score Prospect', 'lower-scoring prospect should follow higher-scoring prospect');
-assert(prioritized.records.length <= 40, 'email queue must respect the 40-record batch cap');
+assert(prioritized.records.length <= 50, 'email queue must respect the configured 50-record batch cap');
+const savedSettings = context.saveOhioEmailResearchSettings({
+  enabled: false, runsPerDay: 6, batchSize: 35, pagesPerSite: 7, retryHours: 12
+});
+assert.strictEqual(savedSettings.settings.enabled, false, 'Command Center must be able to pause research');
+assert.strictEqual(savedSettings.settings.runsPerDay, 6, 'Command Center must save frequency');
+assert.strictEqual(savedSettings.settings.batchSize, 35, 'Command Center must save batch size');
+assert.strictEqual(savedSettings.settings.pagesPerSite, 7, 'Command Center must save website depth');
+assert.strictEqual(savedSettings.settings.retryHours, 12, 'Command Center must save retry interval');
+const pausedQueue = context.getEmailQueue_(50);
+assert.strictEqual(pausedQueue.enabled, false, 'paused research must not dequeue websites');
+console.log('Command Center settings tests passed: pause, frequency, batch size, page depth, retry interval, and queue pause are persisted.');
 function colInbox(name) { return inbox.getRange(1,1,1,inbox.getLastColumn()).getDisplayValues()[0].indexOf(name)+1; }
 console.log('Apps Script mock tests passed: setup, exact cleanup, formula preservation, prospect merge, inbox dedupe, fuzzy flags and email queue/result writeback.');
