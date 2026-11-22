@@ -30,7 +30,7 @@ jobs:
       - name: Download latest Ohio OpenStreetMap extract
         run: |
           curl --fail --location --retry 3 --retry-delay 5 \
-            https://download.geofabrik.de/north-america/us/ohio-latest.osm.pbf \
+            https://download.geofabrik.de/north-america/us/ohio/ohio-latest.osm.pbf \
             --output ohio-latest.osm.pbf
 
       - name: Discover target businesses and de-duplicate in Sheets
