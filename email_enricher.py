@@ -417,8 +417,11 @@ def main():
     if queue.get("scheduled") is False and queue.get("reason") == "not_due":
         print("Email research interval has not elapsed. No websites were processed.")
         return
+    settings = queue.get("settings") or {}
+    global MAX_PAGES_PER_SITE
+    MAX_PAGES_PER_SITE = max(3, min(8, int(settings.get("pagesPerSite", MAX_PAGES_PER_SITE))))
     records = queue.get("records", [])
-    print(f"Email research queue: {len(records)} website(s) (configured limit {queue.get('batch_size', limit)})")
+    print(f"Email research queue: {len(records)} website(s) (configured limit {queue.get('batch_size', limit)}, pages/site {MAX_PAGES_PER_SITE})")
     results = []
     counts = {"found": 0, "no_public_email": 0, "retry": 0, "skipped": 0}
     for i, record in enumerate(records, start=1):
