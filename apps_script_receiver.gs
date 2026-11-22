@@ -166,7 +166,7 @@ function ingestRecords_(records) {
       registerEntry_(reviewEntry, indexes);
       counters.possibleReview++;
       counters.duplicates++;
-      continue;
+      return;
     }
     const rowObj = makeInboxRow_(r, '');
     newRows.push(rowObj.values);
