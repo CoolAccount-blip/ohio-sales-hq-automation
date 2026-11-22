@@ -32,7 +32,7 @@ const OHIO_CONFIG = {
     'Timestamp', 'Action', 'Received', 'Added', 'Merged Into Prospects',
     'Merged Into Inbox', 'Email Queue Size', 'Notes'
   ],
-  EMAIL_BATCH_MAX: 40,
+  EMAIL_BATCH_MAX: 100,
   PROCESSING_STALE_HOURS: 24
 };
 
@@ -365,13 +365,39 @@ function makeInboxRow_(r, possibleDuplicate) {
   return {headers: OHIO_CONFIG.INBOX_HEADERS, values: OHIO_CONFIG.INBOX_HEADERS.map(function(h){return valuesByHeader[h] === undefined ? '' : valuesByHeader[h];})};
 }
 
+function getEmailResearchSettings_() {
+  const props = PropertiesService.getScriptProperties();
+  const enabledRaw = props.getProperty('OHIO_EMAIL_RESEARCH_ENABLED');
+  const runsRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RUNS_PER_DAY'));
+  const batchRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_BATCH_SIZE'));
+  const allowedRuns = [1, 2, 3, 4, 6, 8];
+  const runsPerDay = allowedRuns.indexOf(runsRaw) >= 0 ? runsRaw : 4;
+  const batchSize = Number.isFinite(batchRaw) ? Math.max(10, Math.min(100, Math.round(batchRaw / 5) * 5)) : 50;
+  return {
+    enabled: enabledRaw === null || enabledRaw === '' ? true : enabledRaw === 'true',
+    runsPerDay: runsPerDay,
+    batchSize: batchSize,
+    maxPerDay: runsPerDay * batchSize
+  };
+}
+
 function getEmailQueue_(limit) {
+  const settings = getEmailResearchSettings_();
+  if (!settings.enabled) return {ok: true, enabled: false, scheduled: false, reason: 'paused', records: [], count: 0};
+  const props = PropertiesService.getScriptProperties();
+  const now = new Date();
+  const lastRunRaw = props.getProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT');
+  const lastRun = lastRunRaw ? new Date(lastRunRaw) : null;
+  const minimumIntervalMs = (24 / settings.runsPerDay) * 60 * 60 * 1000;
+  if (lastRun && !isNaN(lastRun.getTime()) && (now.getTime() - lastRun.getTime()) < minimumIntervalMs) {
+    return {ok: true, enabled: true, scheduled: false, reason: 'not_due', next_run_after: new Date(lastRun.getTime() + minimumIntervalMs).toISOString(), records: [], count: 0};
+  }
+
   const ss = getAutomationSpreadsheet_();
   // Keep the user's existing prospects ahead of newly discovered inbox leads.
   const tabs = [ss.getSheetByName(OHIO_CONFIG.PROSPECTS), ss.getSheetByName(OHIO_CONFIG.INBOX)].filter(Boolean);
-  const cap = Math.max(1, Math.min(Number(limit) || OHIO_CONFIG.EMAIL_BATCH_MAX, OHIO_CONFIG.EMAIL_BATCH_MAX));
+  const cap = settings.batchSize;
   const results = [];
-  const now = new Date();
 
   tabs.forEach(function(sheet) {
     if (results.length >= cap) return;
@@ -404,9 +430,13 @@ function getEmailQueue_(limit) {
 
       const status = clean_(row[statusCol - 1]);
       const lastUpdate = updateCol ? row[updateCol - 1] : '';
-      const staleProcessing = /^Processing/i.test(status) && lastUpdate instanceof Date &&
-        ((now - lastUpdate) / 3600000 > OHIO_CONFIG.PROCESSING_STALE_HOURS);
-      const pending = !status || /^Pending$/i.test(status) || /^Retry/i.test(status) || staleProcessing;
+      const lastUpdateDate = lastUpdate instanceof Date ? lastUpdate : (lastUpdate ? new Date(lastUpdate) : null);
+      const staleProcessing = /^Processing/i.test(status) && lastUpdateDate && !isNaN(lastUpdateDate.getTime()) &&
+        ((now - lastUpdateDate) / 3600000 > OHIO_CONFIG.PROCESSING_STALE_HOURS);
+      // Transient failures retry after 24 hours unless the user explicitly retries them sooner.
+      const retryReady = /^Retry/i.test(status) && (!lastUpdateDate || isNaN(lastUpdateDate.getTime()) ||
+        ((now - lastUpdateDate) / 3600000 >= 24));
+      const pending = !status || /^Pending$/i.test(status) || retryReady || staleProcessing;
       if (!pending) continue;
 
       const rawScore = scoreCol ? Number(row[scoreCol - 1]) : 0;
@@ -448,7 +478,11 @@ function getEmailQueue_(limit) {
       });
     });
   });
-  return {ok: true, records: results, count: results.length};
+  if (results.length) props.setProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT', now.toISOString());
+  return {
+    ok: true, enabled: true, scheduled: true, reason: results.length ? 'started' : 'queue_empty',
+    batch_size: cap, records: results, count: results.length
+  };
 }
 
 function saveEmailResults_(results) {
@@ -466,6 +500,9 @@ function saveEmailResults_(results) {
     });
   });
   let updated = 0;
+  let foundCount = 0;
+  let retryCount = 0;
+  let checkedCount = 0;
   results.forEach(function(result) {
     const entry = index[clean_(result.automation_id)];
     if (!entry) return;
@@ -479,7 +516,10 @@ function saveEmailResults_(results) {
     const notesCol = headerCol_(entry.headers, 'Email Research Notes');
     const existingEmail = emailCol ? clean_(entry.values[emailCol - 1]) : '';
     const foundEmail = clean_(result.email);
+    if (foundEmail) foundCount++;
     let status = clean_(result.status) || 'Checked';
+    if (/^Retry/i.test(status)) retryCount++;
+    if (/^Checked/i.test(status)) checkedCount++;
     if (foundEmail) {
       if (isBlank_(existingEmail) || isPlaceholder_(existingEmail)) {
         if (emailCol) entry.sheet.getRange(entry.row, emailCol).setValue(foundEmail);
@@ -499,8 +539,16 @@ function saveEmailResults_(results) {
     if (updateCol) entry.sheet.getRange(entry.row, updateCol).setValue(new Date());
     updated++;
   });
-  logAutomation_('EMAIL_RESEARCH', results.length, 0, 0, 0, 0, 'Results saved: ' + updated);
-  return {ok: true, updated: updated};
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('OHIO_EMAIL_RESEARCH_LAST_COMPLETED_AT', new Date().toISOString());
+  props.setProperty('OHIO_EMAIL_RESEARCH_LAST_BATCH_FOUND', String(foundCount));
+  props.setProperty('OHIO_EMAIL_RESEARCH_LAST_BATCH_PROCESSED', String(updated));
+  props.setProperty('OHIO_EMAIL_RESEARCH_LAST_BATCH_RETRY', String(retryCount));
+  props.setProperty('OHIO_EMAIL_RESEARCH_TOTAL_FOUND',
+    String((Number(props.getProperty('OHIO_EMAIL_RESEARCH_TOTAL_FOUND')) || 0) + foundCount));
+  logAutomation_('EMAIL_RESEARCH', results.length, 0, 0, 0, 0,
+    'Results saved: ' + updated + '; public emails found: ' + foundCount + '; retryable: ' + retryCount + '; checked: ' + checkedCount);
+  return {ok: true, updated: updated, found: foundCount, retry: retryCount, checked: checkedCount};
 }
 
 /**
