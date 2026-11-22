@@ -42,3 +42,6 @@ jobs:
 
       - name: Test Apps Script receiver and email queue
         run: node tests_test_apps_script.js
+
+      - name: Test Command Center sidebar JavaScript
+        run: python tests_test_command_center_html.py
