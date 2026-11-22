@@ -36,6 +36,17 @@ ROLE_ALIASES = {
 }
 BAD_LOCAL_PREFIXES = ("noreply", "no-reply", "donotreply", "do-not-reply", "unsubscribe", "abuse", "postmaster")
 NON_BUSINESS_HOSTS = ("facebook.com", "instagram.com", "tiktok.com", "linkedin.com", "yelp.com", "google.com", "g.page", "linktr.ee", "tripadvisor.com", "yellowpages.com")
+EXCLUDED_CHAIN_RE = re.compile(
+    r"\\b(walmart|sam'?s club|target|home depot|lowe'?s|menards|costco|kroger|meijer|"
+    r"whole foods|aldi|lidl|cvs|walgreens|rite aid|best buy|big lots|dollar general|"
+    r"dollar tree|tractor supply|petco|petsmart|staples|office depot|advance auto parts|"
+    r"autozone|o'?reilly auto parts|ace hardware|true value)\\b",
+    re.IGNORECASE,
+)
+
+
+def is_excluded_chain_name(name: str) -> bool:
+    return bool(EXCLUDED_CHAIN_RE.search(name or ""))
 
 
 class PageParser(HTMLParser):
@@ -277,6 +288,10 @@ def research_site(record: dict) -> dict:
     website = normalize_url(str(record.get("website_url", "")))
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     base = {"automation_id": record.get("automation_id", ""), "email": "", "email_source_url": "", "email_type": "", "email_confidence": "", "checked_at": now, "status": "Checked — no public email found", "note": ""}
+    if is_excluded_chain_name(str(record.get("business_name", ""))):
+        base["status"] = "Skipped — national chain excluded"
+        base["note"] = "National chains are not eligible for local-business outreach."
+        return base
     if not website:
         base["status"] = "No website URL available"
         return base
