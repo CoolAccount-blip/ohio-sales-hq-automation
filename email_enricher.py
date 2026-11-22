@@ -24,7 +24,8 @@ from urllib.robotparser import RobotFileParser
 USER_AGENT = "OhioLeadResearchBot/1.0"
 MAX_PAGES_PER_SITE = 5
 MAX_BYTES_PER_PAGE = 2_000_000
-REQUEST_TIMEOUT = 10
+REQUEST_TIMEOUT = 8
+MAX_RECORDS_PER_RUN = 40
 PAGE_DELAY_SECONDS = 1.0
 EMAIL_RE = re.compile(r"(?i)(?<![\w.+-])[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+")
 ROLE_ALIASES = {
@@ -288,7 +289,9 @@ def research_site(record: dict) -> dict:
         validate_public_host(host)
         robots, robots_note = load_robots(website, host)
         if robots is None:
-            base["status"] = "Skipped — robots.txt could not be checked"
+            # Temporary robots.txt/network failures should be retried on a later run.
+            # An explicit robots.txt disallow remains a permanent skip below.
+            base["status"] = "Retry — robots.txt could not be checked"
             base["note"] = robots_note
             return base
         if not robots.can_fetch(USER_AGENT, website):
@@ -381,8 +384,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--webhook-url", required=True)
     parser.add_argument("--webhook-secret", default="")
-    parser.add_argument("--max-records", type=int, default=20)
+    parser.add_argument("--max-records", type=int, default=MAX_RECORDS_PER_RUN)
     args = parser.parse_args()
+    limit = max(1, min(args.max_records, MAX_RECORDS_PER_RUN))
     secret = args.webhook_secret
     if not secret:
         import os
@@ -390,18 +394,35 @@ def main():
     if not secret:
         raise SystemExit("Missing webhook secret")
 
-    queue = post_json(args.webhook_url, secret, {"action": "get_email_queue", "limit": max(1, min(args.max_records, 20))})
+    queue = post_json(args.webhook_url, secret, {"action": "get_email_queue", "limit": limit})
     records = queue.get("records", [])
-    print(f"Email research queue: {len(records)} website(s)")
+    print(f"Email research queue: {len(records)} website(s) (limit {limit})")
     results = []
+    counts = {"found": 0, "no_public_email": 0, "retry": 0, "skipped": 0}
     for i, record in enumerate(records, start=1):
         print(f"[{i}/{len(records)}] Researching queued business website.")
         result = research_site(record)
         results.append(result)
-        print("  Found a published contact email." if result.get("email") else f"  {result['status']}")
+        if result.get("email"):
+            counts["found"] += 1
+            print("  Found a published contact email.")
+        elif str(result.get("status", "")).startswith("Checked"):
+            counts["no_public_email"] += 1
+            print("  Checked — no public email found")
+        elif str(result.get("status", "")).startswith("Retry"):
+            counts["retry"] += 1
+            print("  Retry — website research error")
+        else:
+            counts["skipped"] += 1
+            print(f"  {result.get('status', 'Skipped')}")
     if results:
         saved = post_json(args.webhook_url, secret, {"action": "save_email_results", "results": results})
-        print(f"Saved {saved.get('updated', 0)} email research results to Sheets.")
+        counts["saved"] = int(saved.get("updated", 0))
+        print(
+            "Batch summary: "
+            f"found={counts['found']}, no_public_email={counts['no_public_email']}, "
+            f"retry={counts['retry']}, skipped={counts['skipped']}, saved={counts['saved']}"
+        )
     else:
         print("No pending website email research. Nothing to update.")
 
