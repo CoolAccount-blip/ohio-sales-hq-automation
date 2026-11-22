@@ -13,10 +13,10 @@ const OHIO_CALL_QUEUE = {
   SHEET: 'Call Queue',
   SOURCE_SHEETS: ['Prospects', 'Discovery Inbox'],
   HEADERS: [
-    'Priority', 'Business Name', 'Phone', 'Call', 'City', 'Address',
+    'Likelihood Score (0-100)', 'Business Name', 'Phone', 'Call', 'City', 'Address',
     'Industry', 'Company Overview / Research Notes', 'Website',
     'Suggested Call Script', 'Call Outcome', 'Call Notes',
-    'Follow-up Date', 'Source Sheet', 'Source Row', 'Lead Key'
+    'Follow-up Date', 'Source Sheet', 'Source Row', 'Lead Key', 'Why This Lead Ranks Here'
   ],
   OUTCOMES: [
     'Ready to Call', 'No Answer', 'Left Voicemail', 'Spoke — Follow Up',
@@ -81,7 +81,20 @@ function refreshOhioCallQueue() {
         get('Source') ? 'Source: ' + get('Source') : ''
       ].filter(Boolean).join(' | ');
       const scoreText = get('Lead Score') || get('Score');
-      const score = Number(String(scoreText).replace(/[^0-9.]/g, '')) || 0;
+      const leadScore = Number(String(scoreText).replace(/[^0-9.]/g, '')) || 0;
+      const fit = callQueueFitScore_({
+        rating: get('Google Rating'),
+        reviews: get('Review Count'),
+        unanswered: get('Unanswered Reviews'),
+        activity: get('Recent Activity (Active/Stale)'),
+        hasWebsite: get('Has Website (Yes/No)'),
+        mobile: get('Mobile Friendly (Yes/No/N/A)'),
+        industry: industry,
+        service: get('Recommended Service'),
+        leadScore: leadScore,
+        name: business
+      });
+      const score = fit.score;
       const overview = callQueueOverview_(business, industry, city, address, website, notes);
       const script = callQueueScript_(business, industry, city, website);
       const prior = old[key] || {};
@@ -90,9 +103,9 @@ function refreshOhioCallQueue() {
         score: score,
         sourceOrder: sourceOrder,
         values: [
-          score || '', business, phone, '', city, address, industry, overview,
+          score, business, phone, '', city, address, industry, overview,
           website, script, prior.outcome || 'Ready to Call', prior.notes || '',
-          prior.followUp || '', sheetName, index + 2, key
+          prior.followUp || '', sheetName, index + 2, key, fit.reason
         ]
       });
     });
@@ -157,6 +170,7 @@ function refreshOhioCallQueue() {
   sh.setColumnWidth(14, 120);
   sh.setColumnWidth(15, 80);
   sh.setColumnWidth(16, 210);
+  sh.setColumnWidth(17, 360);
   sh.setTabColor('#0f766e');
   if (candidates.length) sh.getRange(2, 8, candidates.length, 3).setWrap(true);
   SpreadsheetApp.flush();
@@ -183,6 +197,50 @@ function callQueueReadExisting_(sh) {
     };
   });
   return result;
+}
+
+function callQueueFitScore_(x) {
+  let score = 35;
+  const reasons = [];
+  const rating = Number(x.rating);
+  const reviews = Number(x.reviews);
+  const unanswered = Number(x.unanswered);
+  const industry = String(x.industry || '').toLowerCase();
+  const name = String(x.name || '').toLowerCase();
+
+  if (x.rating && !isNaN(rating)) {
+    if (rating <= 3.8) { score += 18; reasons.push('low public rating'); }
+    else if (rating <= 4.2) { score += 12; reasons.push('room to improve rating'); }
+    else if (rating >= 4.7) score -= 5;
+  }
+  if (x.reviews && !isNaN(reviews)) {
+    if (reviews >= 100) { score += 14; reasons.push('substantial review volume'); }
+    else if (reviews >= 30) { score += 10; reasons.push('established review history'); }
+    else if (reviews >= 10) score += 5;
+  }
+  if (x.unanswered && !isNaN(unanswered) && unanswered >= 3) {
+    score += 12; reasons.push('unanswered reviews reported');
+  }
+  if (/stale|inactive/i.test(String(x.activity || ''))) {
+    score += 7; reasons.push('review activity appears stale');
+  }
+  if (/^no$/i.test(String(x.hasWebsite || ''))) {
+    score += 10; reasons.push('no website listed — possible second service opportunity');
+  }
+  if (/^no$/i.test(String(x.mobile || ''))) {
+    score += 5; reasons.push('website flagged as not mobile-friendly');
+  }
+  if (/plumb|hvac|roof|electric|landscap|tree service|dent|salon|auto repair|pest|cleaning|contract/i.test(industry)) {
+    score += 6; reasons.push('trust- and review-sensitive service category');
+  }
+  if (/both/i.test(String(x.service || ''))) score += 4;
+  if (/\b(inc|llc|company|co\.)\b/.test(name) && /group|holdings|national|corporate|franchise|ulta|immedia|bright now/i.test(name)) {
+    score -= 12; reasons.push('possible multi-location or corporate decision process');
+  }
+  score += Math.min(5, Math.max(0, Number(x.leadScore) || 0) / 20);
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  if (!reasons.length) reasons.push('limited public signals; validate fit on the call');
+  return {score: score, reason: reasons.join('; ') + '. This is a fit estimate, not a prediction of acceptance.'};
 }
 
 function callQueueOverview_(business, industry, city, address, website, notes) {
