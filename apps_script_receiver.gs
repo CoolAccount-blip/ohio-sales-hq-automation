@@ -37,6 +37,24 @@ const OHIO_CONFIG = {
 };
 
 
+/** Shared exclusion gate for chain retailers that are not local-business prospects. */
+function isExcludedChainBusiness_(business) {
+  var name = String(business || '').toLowerCase().replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!name) return false;
+  var patterns = [
+    /\bwalmart\b/, /\bsam s club\b/, /^target(?: store| optical| pharmacy| distribution center)?(?: \d+)?$/,
+    /\bhome depot\b/, /\blowe s\b/, /\bmenards\b/, /\bcostco\b/,
+    /\bkroger\b/, /\bmeijer\b/, /\bwhole foods\b/, /\baldi\b/, /\blidl\b/,
+    /\bcvs\b/, /\bwalgreens\b/, /\brite aid\b/, /\bbest buy\b/, /\bbig lots\b/,
+    /\bdollar general\b/, /\bdollar tree\b/, /\btractor supply\b/, /\bpetco\b/,
+    /\bpetsmart\b/, /\bstaples\b/, /\boffice depot\b/, /\badvance auto parts\b/,
+    /\bauto ?zone\b/, /\bo reilly auto parts\b/, /\bace hardware\b/, /\btrue value\b/
+  ];
+  return patterns.some(function(pattern) { return pattern.test(name); });
+}
+
+
 /** Resolve the target sheet reliably in both editor runs and Web App executions. */
 function getAutomationSpreadsheet_() {
   const props = PropertiesService.getScriptProperties();
@@ -113,11 +131,12 @@ function ingestRecords_(records) {
   const indexes = makeIndexes_(entries);
   const newRows = [];
   const newEntries = [];
-  const counters = {added: 0, mergedProspects: 0, mergedInbox: 0, duplicates: 0, emailQueued: 0};
+  const counters = {added: 0, mergedProspects: 0, mergedInbox: 0, duplicates: 0, emailQueued: 0, excludedChains: 0};
 
   records.forEach(function(raw) {
     const r = normalizeIncomingRecord_(raw);
     if (!r['OSM ID'] || !r['Business Name']) { counters.duplicates++; return; }
+    if (isExcludedChainBusiness_(r['Business Name'])) { counters.excludedChains++; return; }
     const match = findMatch_(r, indexes);
     if (match) {
       mergeIncomingIntoEntry_(match, r);
@@ -149,7 +168,7 @@ function ingestRecords_(records) {
   }
   logAutomation_('INGEST', records.length, counters.added, counters.mergedProspects,
     counters.mergedInbox, counters.emailQueued,
-    'Exact duplicate candidates merged/blocked: ' + counters.duplicates + '; name/city review flags: ' + newEntries.filter(function(e){return !!e.values[headerCol_(e.headers, 'Possible Duplicate') - 1];}).length);
+    'Exact duplicate candidates merged/blocked: ' + counters.duplicates + '; excluded national chains: ' + counters.excludedChains + '; name/city review flags: ' + newEntries.filter(function(e){return !!e.values[headerCol_(e.headers, 'Possible Duplicate') - 1];}).length);
   return {
     ok: true,
     received: records.length,
@@ -158,6 +177,7 @@ function ingestRecords_(records) {
     merged_into_prospects: counters.mergedProspects,
     merged_into_inbox: counters.mergedInbox,
     duplicates: counters.duplicates,
+    excluded_chains: counters.excludedChains,
     email_queued: counters.emailQueued
   };
 }
@@ -351,7 +371,8 @@ function getEmailQueue_(limit) {
       if (sheet.getName() === OHIO_CONFIG.INBOX && /^(promoted|duplicate)/i.test(reviewStatus)) continue;
       const website = clean_(row[websiteCol - 1]);
       const email = emailCol ? row[emailCol - 1] : '';
-      if (!clean_(row[nameCol - 1]) || !website || (!isBlank_(email) && !isPlaceholder_(email))) continue;
+      if (!clean_(row[nameCol - 1]) || isExcludedChainBusiness_(row[nameCol - 1]) ||
+          !website || (!isBlank_(email) && !isPlaceholder_(email))) continue;
 
       const status = clean_(row[statusCol - 1]);
       const lastUpdate = updateCol ? row[updateCol - 1] : '';
