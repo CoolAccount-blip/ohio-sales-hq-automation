@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; --pale:#f8fafc; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:16px; color:var(--ink); font:13px/1.45 Arial,sans-serif; background:#fff; }
+    h1 { margin:0; font-size:19px; letter-spacing:-.3px; }
+    h2 { margin:19px 0 8px; font-size:13px; }
+    .sub { color:var(--muted); margin:4px 0 14px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .metric { padding:10px; border:1px solid var(--line); border-radius:9px; background:var(--pale); }
+    .metric .v { font-size:21px; font-weight:700; }
+    .metric .l { color:var(--muted); font-size:11px; }
+    .section { border-top:1px solid var(--line); margin-top:16px; padding-top:4px; }
+    label { display:block; font-weight:600; margin:10px 0 4px; }
+    select, input[type=number] { width:100%; border:1px solid #cbd5e1; border-radius:7px; padding:9px; background:white; color:var(--ink); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .check { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--line); border-radius:8px; margin-top:10px; }
+    .check input { width:17px; height:17px; }
+    button { width:100%; padding:10px 12px; margin-top:9px; border:0; border-radius:8px; background:var(--blue); color:white; font-weight:700; cursor:pointer; }
+    button.secondary { background:#e2e8f0; color:#1e293b; }
+    button.warning { background:#fff1f2; color:#9f1239; border:1px solid #fecdd3; }
+    button:disabled { opacity:.6; cursor:wait; }
+    .hint { color:var(--muted); font-size:11px; margin-top:5px; }
+    .status { margin-top:10px; padding:10px; border-radius:8px; background:#eff6ff; color:#1e40af; min-height:36px; }
+    .good { background:#ecfdf5; color:#065f46; }
+    .paused { background:#fff7ed; color:#9a3412; }
+    .logs { font-size:11px; color:var(--muted); white-space:pre-wrap; }
+    .spinner { opacity:.7; }
+  </style>
+</head>
+<body>
+  <h1>Ohio Sales HQ</h1>
+  <div class="sub">Research controls and system health</div>
+
+  <div class="grid">
+    <div class="metric"><div class="v" id="pending">—</div><div class="l">Websites waiting</div></div>
+    <div class="metric"><div class="v" id="found">—</div><div class="l">Businesses with email</div></div>
+    <div class="metric"><div class="v" id="retry">—</div><div class="l">Failed / retry</div></div>
+    <div class="metric"><div class="v" id="checked">—</div><div class="l">Checked, no email</div></div>
+  </div>
+
+  <div class="section">
+    <h2>Public email research</h2>
+    <div class="check">
+      <input id="enabled" type="checkbox">
+      <div><b>Automatic research enabled</b><div class="hint">Turn off to pause new website checks. This does not affect email sending.</div></div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="runs">Runs per day</label>
+        <select id="runs">
+          <option value="1">1 run</option><option value="2">2 runs</option>
+          <option value="3">3 runs</option><option value="4">4 runs</option>
+          <option value="6">6 runs</option><option value="8">8 runs</option>
+        </select>
+      </div>
+      <div>
+        <label for="batch">Websites per run</label>
+        <select id="batch">
+          <option>10</option><option>20</option><option>30</option><option>40</option>
+          <option>50</option><option>60</option><option>70</option><option>80</option>
+          <option>90</option><option>100</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint" id="capacity">Daily maximum: — websites</div>
+
+    <div class="row">
+      <div>
+        <label for="pages">Pages per website</label>
+        <select id="pages">
+          <option value="3">3 pages</option><option value="4">4 pages</option>
+          <option value="5">5 pages</option><option value="6">6 pages</option>
+          <option value="7">7 pages</option><option value="8">8 pages</option>
+        </select>
+      </div>
+      <div>
+        <label for="retryHours">Retry after</label>
+        <select id="retryHours">
+          <option value="6">6 hours</option><option value="12">12 hours</option>
+          <option value="24">24 hours</option><option value="48">48 hours</option>
+          <option value="72">72 hours</option>
+        </select>
+      </div>
+    </div>
+    <button id="save" onclick="saveSettings()">Save settings</button>
+    <button class="secondary" onclick="prioritize()">Prioritize next scheduled run</button>
+    <div class="hint">The worker checks every 3 hours. Your frequency setting decides whether each check is allowed to start a batch.</div>
+  </div>
+
+  <div class="section">
+    <h2>Queue tools</h2>
+    <button class="secondary" onclick="retryFailed()">Retry failed websites</button>
+    <button class="secondary" onclick="recheckNoEmail()">Recheck sites previously checked without finding an email</button>
+    <button class="secondary" onclick="refresh()">Refresh status</button>
+    <div class="hint">Retry/recheck queues sites for the next scheduled worker check; these buttons do not send emails.</div>
+  </div>
+
+  <div class="section">
+    <h2>Recent activity</h2>
+    <div class="hint" id="lastRun">Last batch started: —</div>
+    <div class="hint" id="lastComplete">Last batch completed: —</div>
+    <div class="hint" id="batchStats">Most recent batch: —</div>
+  </div>
+  <div id="message" class="status">Loading system status…</div>
+
+<script>
+  function say(message, kind) {
+    const box = document.getElementById('message');
+    box.textContent = message;
+    box.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function busy(on) {
+    document.querySelectorAll('button').forEach(b => b.disabled = on);
+    if (on) say('Saving / updating…');
+  }
+  function updateCapacity() {
+    document.getElementById('capacity').textContent =
+      'Daily maximum: ' + (Number(document.getElementById('runs').value) * Number(document.getElementById('batch').value)) + ' website checks';
+  }
+  document.getElementById('runs').addEventListener('change', updateCapacity);
+  document.getElementById('batch').addEventListener('change', updateCapacity);
+
+  function refresh() {
+    busy(true);
+    google.script.run.withSuccessHandler(render).withFailureHandler(err => { busy(false); say(err.message || String(err), 'paused'); }).getOhioCommandCenterData();
+  }
+  function render(data) {
+    busy(false);
+    const s=data.settings, m=data.metrics;
+    document.getElementById('enabled').checked=s.enabled;
+    document.getElementById('runs').value=String(s.runsPerDay);
+    document.getElementById('batch').value=String(s.batchSize);
+    document.getElementById('pages').value=String(s.pagesPerSite);
+    document.getElementById('retryHours').value=String(s.retryHours);
+    updateCapacity();
+    document.getElementById('pending').textContent=m.pending;
+    document.getElementById('found').textContent=m.found;
+    document.getElementById('retry').textContent=m.retries;
+    document.getElementById('checked').textContent=m.checkedNoEmail;
+    document.getElementById('lastRun').textContent='Last batch started: '+(data.lastRun || 'Not run yet');
+    document.getElementById('lastComplete').textContent='Last batch completed: '+(data.lastCompleted || 'Not completed yet');
+    document.getElementById('batchStats').textContent='Latest batch processed '+data.lastBatchProcessed+', found '+data.lastBatchFound+' public emails, retry '+data.lastBatchRetry+'. Lifetime found: '+data.totalFound+'.';
+    say(s.enabled ? 'Email research is enabled.' : 'Email research is paused.', s.enabled ? 'good' : 'paused');
+  }
+  function saveSettings() {
+    busy(true);
+    const input={
+      enabled:document.getElementById('enabled').checked,
+      runsPerDay:Number(document.getElementById('runs').value),
+      batchSize:Number(document.getElementById('batch').value),
+      pagesPerSite:Number(document.getElementById('pages').value),
+      retryHours:Number(document.getElementById('retryHours').value)
+    };
+    google.script.run.withSuccessHandler(data=>{render(data);say('Settings saved. The next scheduled check will use these values.','good');})
+      .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).saveOhioEmailResearchSettings(input);
+  }
+  function prioritize() {
+    busy(true);
+    google.script.run.withSuccessHandler(message=>{busy(false);say(message,'good');})
+      .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).prioritizeNextOhioEmailRun();
+  }
+  function retryFailed() {
+    if (!confirm('Reset all retryable website failures to Pending? They will be tried on the next scheduled worker check.')) return;
+    busy(true);
+    google.script.run.withSuccessHandler(result=>{renderAfterAction(result.message);})
+      .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).retryFailedOhioEmailResearch();
+  }
+  function recheckNoEmail() {
+    if (!confirm('Queue all websites previously checked without a public email for another check? This may use a large part of your research capacity.')) return;
+    busy(true);
+    google.script.run.withSuccessHandler(result=>{renderAfterAction(result.message);})
+      .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).recheckOhioNoEmailWebsites();
+  }
+  function renderAfterAction(message) {
+    say(message,'good');
+    refresh();
+  }
+  refresh();
+</script>
+</body>
+</html>
