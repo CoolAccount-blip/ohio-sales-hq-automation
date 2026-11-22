@@ -222,7 +222,8 @@ function requeueOhioEmailResearch_(statusPattern, newStatus) {
     rows.forEach(function(row,i) {
       const status = String(row[statusCol-1] || '');
       if (!statusPattern.test(status)) return;
-      if (!row[nameCol-1] || !row[websiteCol-1] || (emailCol && row[emailCol-1])) return;
+      if (!row[nameCol-1] || !row[websiteCol-1] ||
+          (emailCol && !isBlank_(row[emailCol-1]) && !isPlaceholder_(row[emailCol-1]))) return;
       if (possibleCol && row[possibleCol-1]) return;
       if (reviewCol && name === OHIO_CONFIG.INBOX && /^(promoted|duplicate|possible duplicate|excluded)/i.test(row[reviewCol-1])) return;
       const rowNum = i + 2;
