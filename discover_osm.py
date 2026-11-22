@@ -53,6 +53,21 @@ def clean(value: object) -> str:
     return str(value).strip() if value is not None else ""
 
 
+import re
+
+EXCLUDED_CHAIN_RE = re.compile(
+    r"\b(walmart|sam'?s club|target|home depot|lowe'?s|menards|costco|kroger|meijer|"
+    r"whole foods|aldi|lidl|cvs|walgreens|rite aid|best buy|big lots|dollar general|"
+    r"dollar tree|tractor supply|petco|petsmart|staples|office depot|advance auto parts|"
+    r"autozone|o'?reilly auto parts|ace hardware|true value)\b",
+    re.IGNORECASE,
+)
+
+
+def is_excluded_chain(name: str) -> bool:
+    return bool(EXCLUDED_CHAIN_RE.search(name))
+
+
 def classify(tags) -> str:
     craft = clean(tags.get("craft")).lower()
     if craft in CRAFT_MAP:
@@ -120,6 +135,8 @@ class OhioBusinessHandler(osmium.SimpleHandler):
     def _add(self, obj, lat, lon):
         tags = obj.tags
         name = clean(tags.get("name") or tags.get("brand") or tags.get("operator"))
+        if is_excluded_chain(name):
+            return
         industry = classify(tags)
         if not name or not industry or lat is None or lon is None:
             return
