@@ -28,10 +28,16 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Test public email extraction
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Test public email extraction and chain filter
         run: python tests_test_email_enricher.py
 
-      - name: Test deduplication keys
+      - name: Test discovery chain filter
+        run: python tests_test_discovery_chains.py
+
+      - name: Test deduplication keys and chain filter
         run: node tests_test_dedupe_logic.js
 
       - name: Test Apps Script receiver and email queue
