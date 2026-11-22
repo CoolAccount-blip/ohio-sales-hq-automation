@@ -3,7 +3,7 @@ name: Find Public Business Emails
 on:
   workflow_dispatch:
   schedule:
-    # Daily at 13:30 UTC; processes a capped batch from the Google Sheet queue.
+    # Twice daily at 01:30 and 13:30 UTC; up to 40 queued websites per run.
     - cron: '30 1,13 * * *'
 
 permissions:
