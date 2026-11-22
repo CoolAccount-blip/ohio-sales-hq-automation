@@ -14,11 +14,13 @@ WHAT THIS PACKAGE DOES
 3. Uncertain matches: if the normalized business name and city match but the address
    differs or is missing, the new row is flagged in Possible Duplicate for review.
    It is not auto-deleted because it could be a second location.
-4. Email research: a separate daily job takes up to 20 queued websites from the sheet.
-   It checks the business's own website homepage and a small number of contact/about
-   pages. It looks for mailto links, visible email text and public structured contact
-   data. It checks robots.txt, uses a delay between pages and skips social/directory
-   profile URLs.
+4. Email research: two daily jobs each take up to 40 queued websites (up to 80/day)
+   from the sheet. Existing Prospects are prioritized before Discovery Inbox; Prospects
+   are sorted by Lead Score (0-100), highest first. It checks the business's own website
+   homepage and a small number of contact/about pages. It looks for mailto links, visible
+   email text and public structured contact data. It checks robots.txt, uses a delay
+   between pages and skips social/directory profile URLs. Transient robots.txt failures
+   are retried; explicit robots.txt disallows remain skipped.
 5. Audit trail: records automation runs and duplicate removals in Automation Log and
    Duplicate Log. The email source page, email type, confidence and checked date are
    stored next to the public email.
@@ -75,13 +77,22 @@ B. GitHub setup (source code only)
       SHEETS_WEBHOOK_SECRET = the same secret used in Apps Script
 10. Open Actions and enable workflows if GitHub asks.
 
+UPDATING THE LIVE RECEIVER AFTER A CODE CHANGE
+------------------------------------------------
+The GitHub copy of apps_script_receiver.gs is the source of truth for the receiver
+code. After an update to that file, copy its full contents into the existing
+AutomationReceiver.gs file in Extensions > Apps Script, save, then open Deploy >
+Manage deployments, edit the existing web-app deployment, select New version, and
+Deploy. This keeps the /exec endpoint URL the same. Do not create a new deployment
+unless you also update the GitHub SHEETS_WEBHOOK_URL secret.
+
 FIRST TEST — PROCESS EMAILS ALREADY IN YOUR TRACKER
 --------------------------------------------------
 11. In Actions, select "Find Public Business Emails" > Run workflow.
-    This runs the email queue without downloading the OSM file. It processes up to 20
-    queued websites and writes results back to Public Email plus the source/status
-    columns. Run it again manually to process another batch. A daily schedule is also
-    included to drain the remaining queue gradually.
+    This runs the email queue without downloading the OSM file. It processes up to 40
+    queued websites and writes results back to Public Email plus the source/status/notes
+    columns. The workflow is scheduled twice daily (01:30 and 13:30 UTC) and serializes
+    overlapping runs so two jobs do not claim the same queue at once.
 12. Check Prospects. Look at Public Email, Email Source URL, Email Type, Email
     Confidence, Email Checked At and Email Research Status. The automation log shows
     how many results were processed.
