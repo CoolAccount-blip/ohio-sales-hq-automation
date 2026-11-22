@@ -1,0 +1,26 @@
+OHIO SALES HQ — COMMAND CENTER INSTALLATION
+
+FILES TO ADD TO THE EXISTING GOOGLE APPS SCRIPT PROJECT
+1. CommandCenter.gs as a new Script file.
+2. CommandCenter.html as an HTML file named CommandCenter.
+3. Replace the existing receiver file with the latest apps_script_receiver.gs from this repository.
+
+GITHUB / ACTIONS
+The repository includes .github/workflows/email-research.yml. It checks every 3 hours; settings saved from the spreadsheet determine whether a batch is due.
+Ensure the existing GitHub Actions repository secrets SHEETS_WEBHOOK_URL and SHEETS_WEBHOOK_SECRET are present. Do not put secrets in code, Sheets, or public files.
+
+INSTALL
+1. Open the spreadsheet > Extensions > Apps Script.
+2. Add CommandCenter.gs (copy from the repository) and add an HTML file named CommandCenter (copy CommandCenter.html).
+3. Replace the existing receiver file contents with apps_script_receiver.gs from the repository.
+4. Save. In the Apps Script editor, choose installOhioCommandCenter and Run. Approve the Google prompt.
+5. Reload the spreadsheet. Open the Ohio Sales HQ Controls menu > Open Command Center.
+
+The install adds one installable on-open trigger for the controls menu. It does not install an email-sending trigger.
+In the sidebar you can set research enabled/paused, runs per day, websites per batch, pages per website, and retry delay.
+The worker is checked every 3 hours. Your selected frequency controls how often the worker can actually start a batch.
+"Prioritize next scheduled run" clears the interval wait but does not start an immediate GitHub workflow. The next scheduled check (within 3 hours) can run.
+"Retry failed websites" queues transient failures. "Recheck sites previously checked without finding an email" deliberately re-opens completed no-email sites and can use significant research capacity.
+
+The email research worker reads only publicly displayed addresses from the business website. It does not guess addresses or send email.
+Email sending is unchanged and remains a separate manual confirmation action.
