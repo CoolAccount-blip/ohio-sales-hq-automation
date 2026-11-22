@@ -88,6 +88,7 @@
       </div>
     </div>
     <button id="save" onclick="saveSettings()">Save settings</button>
+    <button id="toggle" class="secondary" onclick="toggleResearch()">Pause email research</button>
     <button class="secondary" onclick="prioritize()">Prioritize next scheduled run</button>
     <div class="hint">The worker checks every 3 hours. Your frequency setting decides whether each check is allowed to start a batch.</div>
   </div>
@@ -145,6 +146,7 @@
     document.getElementById('lastRun').textContent='Last batch started: '+(data.lastRun || 'Not run yet');
     document.getElementById('lastComplete').textContent='Last batch completed: '+(data.lastCompleted || 'Not completed yet');
     document.getElementById('batchStats').textContent='Latest batch processed '+data.lastBatchProcessed+', found '+data.lastBatchFound+' public emails, retry '+data.lastBatchRetry+'. Lifetime found: '+data.totalFound+'.';
+    document.getElementById('toggle').textContent = s.enabled ? 'Pause email research' : 'Resume email research';
     say(s.enabled ? 'Email research is enabled.' : 'Email research is paused.', s.enabled ? 'good' : 'paused');
   }
   function saveSettings() {
@@ -158,6 +160,10 @@
     };
     google.script.run.withSuccessHandler(data=>{render(data);say('Settings saved. The next scheduled check will use these values.','good');})
       .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).saveOhioEmailResearchSettings(input);
+  }
+  function toggleResearch() {
+    document.getElementById('enabled').checked = !document.getElementById('enabled').checked;
+    saveSettings();
   }
   function prioritize() {
     busy(true);
