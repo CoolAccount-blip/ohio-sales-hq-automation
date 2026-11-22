@@ -1,0 +1,49 @@
+name: Scheduled Public Email Research
+
+on:
+  # Poll every 3 hours. The spreadsheet settings determine whether a research
+  # batch is due, so users can change actual frequency without editing code.
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ohio-public-email-research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate required secrets
+        env:
+          SHEETS_WEBHOOK_URL: ${{ secrets.SHEETS_WEBHOOK_URL }}
+          SHEETS_WEBHOOK_SECRET: ${{ secrets.SHEETS_WEBHOOK_SECRET }}
+        run: |
+          test -n "$SHEETS_WEBHOOK_URL" || (echo "Missing repository secret SHEETS_WEBHOOK_URL" && exit 1)
+          test -n "$SHEETS_WEBHOOK_SECRET" || (echo "Missing repository secret SHEETS_WEBHOOK_SECRET" && exit 1)
+
+      - name: Research public business emails
+        env:
+          SHEETS_WEBHOOK_URL: ${{ secrets.SHEETS_WEBHOOK_URL }}
+          SHEETS_WEBHOOK_SECRET: ${{ secrets.SHEETS_WEBHOOK_SECRET }}
+        run: |
+          python email_enricher.py \
+            --webhook-url "$SHEETS_WEBHOOK_URL" \
+            --webhook-secret "$SHEETS_WEBHOOK_SECRET" \
+            --max-records 100
