@@ -24,4 +24,7 @@ assert.notStrictEqual(
   websiteAddressKey_('https://axisplumbing.com', '5533 State Rd, Parma, OH 44134', 'Parma'),
   websiteAddressKey_('https://axisplumbing.com', '10 Main St, Parma, OH 44134', 'Parma')
 );
-console.log('Offline deduplication normalization tests passed.');
+assert.strictEqual(isExcludedChainBusiness_('Walmart Garden Center'), true, 'Walmart locations must be excluded');
+assert.strictEqual(isExcludedChainBusiness_('Home Depot'), true, 'large chains must be excluded');
+assert.strictEqual(isExcludedChainBusiness_('Independent Family Dental'), false, 'independent local businesses must remain eligible');
+console.log('Offline deduplication and chain-exclusion tests passed.');
