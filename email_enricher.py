@@ -25,7 +25,7 @@ USER_AGENT = "OhioLeadResearchBot/1.0"
 MAX_PAGES_PER_SITE = 5
 MAX_BYTES_PER_PAGE = 2_000_000
 REQUEST_TIMEOUT = 8
-MAX_RECORDS_PER_RUN = 40
+MAX_RECORDS_PER_RUN = 100
 PAGE_DELAY_SECONDS = 1.0
 EMAIL_RE = re.compile(r"(?i)(?<![\w.+-])[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+")
 ROLE_ALIASES = {
@@ -411,8 +411,14 @@ def main():
         raise SystemExit("Missing webhook secret")
 
     queue = post_json(args.webhook_url, secret, {"action": "get_email_queue", "limit": limit})
+    if queue.get("enabled") is False:
+        print("Email research is paused in the Command Center. No websites were processed.")
+        return
+    if queue.get("scheduled") is False and queue.get("reason") == "not_due":
+        print("Email research interval has not elapsed. No websites were processed.")
+        return
     records = queue.get("records", [])
-    print(f"Email research queue: {len(records)} website(s) (limit {limit})")
+    print(f"Email research queue: {len(records)} website(s) (configured limit {queue.get('batch_size', limit)})")
     results = []
     counts = {"found": 0, "no_public_email": 0, "retry": 0, "skipped": 0}
     for i, record in enumerate(records, start=1):
