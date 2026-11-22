@@ -38,7 +38,7 @@ BAD_LOCAL_PREFIXES = ("noreply", "no-reply", "donotreply", "do-not-reply", "unsu
 NON_BUSINESS_HOSTS = ("facebook.com", "instagram.com", "tiktok.com", "linkedin.com", "yelp.com", "google.com", "g.page", "linktr.ee", "tripadvisor.com", "yellowpages.com")
 EXCLUDED_CHAIN_RE = re.compile(
     r"^(?:the\s+)?(?:walmart|sam s club|target(?:$|\s+\d+\b|\s+(?:store|optical|pharmacy|distribution)\b)|home depot|"
-    r"lowe'?s|menards|costco|kroger|meijer|whole foods|aldi|lidl|cvs|walgreens|rite aid|"
+    r"lowe s|lowes|menards|costco|kroger|meijer|whole foods|aldi|lidl|cvs|walgreens|rite aid|"
     r"best buy|big lots|dollar general|dollar tree|tractor supply|petco|petsmart|staples|"
     r"office depot|advance auto parts|auto ?zone|o reilly auto parts|ace hardware|true value)\b",
     re.IGNORECASE,
