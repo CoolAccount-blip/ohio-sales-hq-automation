@@ -126,9 +126,12 @@
   document.getElementById('runs').addEventListener('change', updateCapacity);
   document.getElementById('batch').addEventListener('change', updateCapacity);
 
-  function refresh() {
+  function refresh(afterMessage) {
     busy(true);
-    google.script.run.withSuccessHandler(render).withFailureHandler(err => { busy(false); say(err.message || String(err), 'paused'); }).getOhioCommandCenterData();
+    google.script.run.withSuccessHandler(data => {
+      render(data);
+      if (afterMessage) say(afterMessage, 'good');
+    }).withFailureHandler(err => { busy(false); say(err.message || String(err), 'paused'); }).getOhioCommandCenterData();
   }
   function render(data) {
     busy(false);
@@ -183,8 +186,7 @@
       .withFailureHandler(err=>{busy(false);say(err.message || String(err),'paused');}).recheckOhioNoEmailWebsites();
   }
   function renderAfterAction(message) {
-    say(message,'good');
-    refresh();
+    refresh(message);
   }
   refresh();
 </script>
