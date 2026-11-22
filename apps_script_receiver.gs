@@ -369,9 +369,12 @@ function getEmailResearchSettings_() {
   const props = PropertiesService.getScriptProperties();
   const enabledRaw = props.getProperty('OHIO_EMAIL_RESEARCH_ENABLED');
   const runsRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RUNS_PER_DAY'));
-  const batchRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_BATCH_SIZE'));
-  const pagesRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_PAGES_PER_SITE'));
-  const retryRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RETRY_HOURS'));
+  const batchSetting = props.getProperty('OHIO_EMAIL_RESEARCH_BATCH_SIZE');
+  const pagesSetting = props.getProperty('OHIO_EMAIL_RESEARCH_PAGES_PER_SITE');
+  const retrySetting = props.getProperty('OHIO_EMAIL_RESEARCH_RETRY_HOURS');
+  const batchRaw = batchSetting === null || batchSetting === '' ? 50 : Number(batchSetting);
+  const pagesRaw = pagesSetting === null || pagesSetting === '' ? 5 : Number(pagesSetting);
+  const retryRaw = retrySetting === null || retrySetting === '' ? 24 : Number(retrySetting);
   const allowedRuns = [1, 2, 3, 4, 6, 8];
   const runsPerDay = allowedRuns.indexOf(runsRaw) >= 0 ? runsRaw : 4;
   const batchSize = Number.isFinite(batchRaw) ? Math.max(10, Math.min(100, Math.round(batchRaw / 5) * 5)) : 50;
