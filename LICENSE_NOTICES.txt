@@ -1,0 +1,7 @@
+DATA SOURCE ATTRIBUTION
+OpenStreetMap data © OpenStreetMap contributors, available under the Open Database
+License (ODbL): https://www.openstreetmap.org/copyright
+
+This automation code is provided as a starter workflow. The user remains responsible
+for reviewing source-data licensing, website terms and any applicable email outreach
+requirements before deployment or use.
