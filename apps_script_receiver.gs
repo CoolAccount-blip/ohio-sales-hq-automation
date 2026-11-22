@@ -42,7 +42,7 @@ function isExcludedChainBusiness_(business) {
   var name = String(business || '').toLowerCase().replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^the\s+/, '');
   var patterns = [
-    /^walmart\b/, /^sam s club\b/, /^target(?:$| store\b| optical\b| pharmacy\b| distribution\b)/,
+    /^walmart\b/, /^sam s club\b/, /^target(?:$| \d+\b| store\b| optical\b| pharmacy\b| distribution\b)/,
     /^home depot\b/, /^lowe s\b/, /^lowes\b/, /^menards\b/, /^costco\b/,
     /^kroger\b/, /^meijer\b/, /^whole foods\b/, /^aldi\b/, /^lidl\b/,
     /^cvs\b/, /^walgreens\b/, /^rite aid\b/, /^best buy\b/, /^big lots\b/,
