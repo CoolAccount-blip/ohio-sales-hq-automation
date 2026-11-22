@@ -25,6 +25,7 @@ assert.notStrictEqual(
   websiteAddressKey_('https://axisplumbing.com', '10 Main St, Parma, OH 44134', 'Parma')
 );
 assert.strictEqual(isExcludedChainBusiness_('Walmart Garden Center'), true, 'Walmart locations must be excluded');
+assert.strictEqual(isExcludedChainBusiness_('Sams Club'), true, 'Sams Club without apostrophe must be excluded');
 assert.strictEqual(isExcludedChainBusiness_('Home Depot'), true, 'large chains must be excluded');
 assert.strictEqual(isExcludedChainBusiness_('Independent Family Dental'), false, 'independent local businesses must remain eligible');
 assert.strictEqual(isExcludedChainBusiness_('Target 120'), true, 'numbered Target stores must be excluded');
