@@ -112,15 +112,43 @@ const saved = context.saveEmailResults_([{
   email_type:'Role-based public inbox',
   email_confidence:'High — published on official website',
   checked_at:'2026-11-22T17:00:00Z',
-  status:'Done — public email found'
+  status:'Done — public email found',
+  note:'Public listing found; mailbox delivery has not been tested.'
 }]);
 assert.strictEqual(saved.updated,1,'email result should be saved to matching row');
 assert.strictEqual(inbox.getRange(2,colInbox('Public Email')).getValue(),'office@newplumbing.example');
+assert.strictEqual(inbox.getRange(2,colInbox('Email Research Notes')).getValue(),'Public listing found; mailbox delivery has not been tested.','research note should be saved for audit and retry context');
 const phoneDuplicate = context.ingestRecords_([{
   'OSM ID':'node:4','Business Name':'Dayton Pipe Repair','Industry':'Plumber','City':'Dayton',
   'Address':'100 Main St, Dayton, OH 45402','Phone Number':'(937) 555-0100'
 }]);
 assert.strictEqual(phoneDuplicate.added,0,'same phone and address should be merged even when the listing name differs');
 assert.strictEqual(phoneDuplicate.merged_into_inbox,1,'phone+address duplicate should merge into the existing inbox record');
+
+// The queue should work highest lead-score Prospects first, then Discovery Inbox.
+function appendScoredProspect(name, score) {
+  const prospectHeaders = prospects.getRange(1,1,1,prospects.getLastColumn()).getDisplayValues()[0];
+  const row = new Array(prospectHeaders.length).fill('');
+  function put(header, value) {
+    const index = prospectHeaders.indexOf(header);
+    if (index >= 0) row[index] = value;
+  }
+  put('Business Name', name);
+  put('Industry', 'Plumber');
+  put('City (OH)', 'Cleveland');
+  put('Address', '100 ' + name + ' St, Cleveland, OH 44101');
+  put('Website URL', 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.example');
+  put('Public Email', '');
+  put('Email Research Status', 'Pending');
+  put('Automation ID', 'score-' + score);
+  put('Lead Score (0-100)', score);
+  prospects.appendRow(row);
+}
+appendScoredProspect('Lower Score Prospect', 25);
+appendScoredProspect('Higher Score Prospect', 95);
+const prioritized = context.getEmailQueue_(40);
+assert.strictEqual(prioritized.records[0].business_name, 'Higher Score Prospect', 'highest lead-score existing prospect should be researched first');
+assert.strictEqual(prioritized.records[1].business_name, 'Lower Score Prospect', 'lower-scoring prospect should follow higher-scoring prospect');
+assert(prioritized.records.length <= 40, 'email queue must respect the 40-record batch cap');
 function colInbox(name) { return inbox.getRange(1,1,1,inbox.getLastColumn()).getDisplayValues()[0].indexOf(name)+1; }
 console.log('Apps Script mock tests passed: setup, exact cleanup, formula preservation, prospect merge, inbox dedupe, fuzzy flags and email queue/result writeback.');
