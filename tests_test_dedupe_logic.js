@@ -27,4 +27,7 @@ assert.notStrictEqual(
 assert.strictEqual(isExcludedChainBusiness_('Walmart Garden Center'), true, 'Walmart locations must be excluded');
 assert.strictEqual(isExcludedChainBusiness_('Home Depot'), true, 'large chains must be excluded');
 assert.strictEqual(isExcludedChainBusiness_('Independent Family Dental'), false, 'independent local businesses must remain eligible');
+assert.strictEqual(isExcludedChainBusiness_('Target 120'), true, 'numbered Target stores must be excluded');
+assert.strictEqual(isExcludedChainBusiness_('Target Plumbing'), false, 'independent business names beginning with Target should not be blanket-blocked');
+assert.strictEqual(isExcludedChainBusiness_('O’Reilly Auto Parts'), true, 'O’Reilly chain locations must be excluded');
 console.log('Offline deduplication and chain-exclusion tests passed.');
