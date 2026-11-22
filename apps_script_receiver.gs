@@ -74,6 +74,7 @@ function setupAutomation() {
   if (!prospects) throw new Error('Could not find the Prospects tab.');
   ensureHeaderColumns_(prospects, OHIO_CONFIG.PROSPECT_EXTRA_HEADERS);
   const inbox = ensureSheetWithHeaders_(ss, OHIO_CONFIG.INBOX, OHIO_CONFIG.INBOX_HEADERS);
+  ensureSheetWithHeaders_(ss, 'Possible Duplicate Review', OHIO_CONFIG.INBOX_HEADERS);
   ensureSheetWithHeaders_(ss, OHIO_CONFIG.DUP_LOG, OHIO_CONFIG.DUP_HEADERS);
   ensureSheetWithHeaders_(ss, OHIO_CONFIG.AUTO_LOG, OHIO_CONFIG.LOG_HEADERS);
   initializeAutomationRows_(prospects);
@@ -124,14 +125,17 @@ function ingestRecords_(records) {
   if (!prospects) throw new Error('Could not find the Prospects tab. Run setupAutomation().');
   ensureHeaderColumns_(prospects, OHIO_CONFIG.PROSPECT_EXTRA_HEADERS);
   const inbox = ensureSheetWithHeaders_(ss, OHIO_CONFIG.INBOX, OHIO_CONFIG.INBOX_HEADERS);
+  const possibleReview = ensureSheetWithHeaders_(ss, 'Possible Duplicate Review', OHIO_CONFIG.INBOX_HEADERS);
 
   const entries = [];
   entries.push.apply(entries, loadIndexEntries_(prospects, 'Prospects'));
   entries.push.apply(entries, loadIndexEntries_(inbox, 'Discovery Inbox'));
+  entries.push.apply(entries, loadIndexEntries_(possibleReview, 'Possible Duplicate Review'));
   const indexes = makeIndexes_(entries);
   const newRows = [];
   const newEntries = [];
-  const counters = {added: 0, mergedProspects: 0, mergedInbox: 0, duplicates: 0, emailQueued: 0, excludedChains: 0};
+  const possibleRows = [];
+  const counters = {added: 0, mergedProspects: 0, mergedInbox: 0, duplicates: 0, emailQueued: 0, excludedChains: 0, possibleReview: 0};
 
   records.forEach(function(raw) {
     const r = normalizeIncomingRecord_(raw);
@@ -147,8 +151,24 @@ function ingestRecords_(records) {
     }
 
     const possibleMatch = findPossibleMatch_(r, indexes);
-    const possibleNote = possibleMatch ? 'Review — same normalized business name and city; address differs or is incomplete.' : '';
-    const rowObj = makeInboxRow_(r, possibleNote);
+    if (possibleMatch) {
+      const note = 'Possible duplicate of ' + clean_(valueByHeader_(possibleMatch, 'Business Name')) +
+        ' in ' + clean_(valueByHeader_(possibleMatch, 'City (OH)') || valueByHeader_(possibleMatch, 'City')) +
+        '. Address differs or is incomplete; held for review instead of entering the active Discovery Inbox.';
+      const reviewRow = makeInboxRow_(r, note);
+      reviewRow.values[headerCol_(reviewRow.headers, 'Review Status') - 1] = 'Possible Duplicate — manual review';
+      reviewRow.values[headerCol_(reviewRow.headers, 'Notes') - 1] = note;
+      possibleRows.push(reviewRow.values);
+      const reviewEntry = {
+        sheet: possibleReview, sheetName: 'Possible Duplicate Review', row: null, headers: reviewRow.headers,
+        values: reviewRow.values, newRecord: true, updates: {}
+      };
+      registerEntry_(reviewEntry, indexes);
+      counters.possibleReview++;
+      counters.duplicates++;
+      continue;
+    }
+    const rowObj = makeInboxRow_(r, '');
     newRows.push(rowObj.values);
     const entry = {
       sheet: inbox, sheetName: 'Discovery Inbox', row: null, headers: rowObj.headers,
@@ -166,9 +186,13 @@ function ingestRecords_(records) {
     const firstRow = inbox.getLastRow() + 1;
     inbox.getRange(firstRow, 1, newRows.length, OHIO_CONFIG.INBOX_HEADERS.length).setValues(newRows);
   }
+  if (possibleRows.length) {
+    const firstReviewRow = possibleReview.getLastRow() + 1;
+    possibleReview.getRange(firstReviewRow, 1, possibleRows.length, OHIO_CONFIG.INBOX_HEADERS.length).setValues(possibleRows);
+  }
   logAutomation_('INGEST', records.length, counters.added, counters.mergedProspects,
     counters.mergedInbox, counters.emailQueued,
-    'Exact duplicate candidates merged/blocked: ' + counters.duplicates + '; excluded national chains: ' + counters.excludedChains + '; name/city review flags: ' + newEntries.filter(function(e){return !!e.values[headerCol_(e.headers, 'Possible Duplicate') - 1];}).length);
+    'Exact duplicate candidates merged/blocked: ' + counters.duplicates + '; possible same-name/city records held for review: ' + counters.possibleReview + '; excluded national chains: ' + counters.excludedChains);
   return {
     ok: true,
     received: records.length,
@@ -177,6 +201,7 @@ function ingestRecords_(records) {
     merged_into_prospects: counters.mergedProspects,
     merged_into_inbox: counters.mergedInbox,
     duplicates: counters.duplicates,
+    possible_duplicate_review: counters.possibleReview,
     excluded_chains: counters.excludedChains,
     email_queued: counters.emailQueued
   };
