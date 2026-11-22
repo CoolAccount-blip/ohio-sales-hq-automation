@@ -14,13 +14,13 @@ const OHIO_CONFIG = {
   AUTO_LOG: 'Automation Log',
   PROSPECT_EXTRA_HEADERS: [
     'Automation ID', 'OSM IDs', 'Postal Code', 'Email Source URL', 'Email Type',
-    'Email Confidence', 'Email Checked At', 'Email Research Status',
+    'Email Confidence', 'Email Checked At', 'Email Research Status', 'Email Research Notes',
     'Last Automation Update', 'Possible Duplicate', 'Latitude', 'Longitude'
   ],
   INBOX_HEADERS: [
     'Automation ID', 'OSM IDs', 'Business Name', 'Industry', 'City (OH)', 'Address',
     'Postal Code', 'Website URL', 'Public Email', 'Phone Number', 'Email Source URL',
-    'Email Type', 'Email Confidence', 'Email Checked At', 'Email Research Status',
+    'Email Type', 'Email Confidence', 'Email Checked At', 'Email Research Status', 'Email Research Notes',
     'Source', 'Date Discovered', 'Latitude', 'Longitude', 'OSM Tags', 'Review Status',
     'Matched Prospect Row', 'Notes', 'Possible Duplicate'
   ],
@@ -32,7 +32,7 @@ const OHIO_CONFIG = {
     'Timestamp', 'Action', 'Received', 'Added', 'Merged Into Prospects',
     'Merged Into Inbox', 'Email Queue Size', 'Notes'
   ],
-  EMAIL_BATCH_MAX: 20,
+  EMAIL_BATCH_MAX: 40,
   PROCESSING_STALE_HOURS: 24
 };
 
@@ -314,6 +314,7 @@ function makeInboxRow_(r, possibleDuplicate) {
     'Email Source URL': r['Email Source URL'], 'Email Type': r['Email Type'],
     'Email Confidence': r['Email Confidence'], 'Email Checked At': '',
     'Email Research Status': r['Public Email'] ? 'Skipped — email already listed in OSM' : (r['Website URL'] ? 'Pending' : 'No website available'),
+    'Email Research Notes': '',
     'Source': r['Source'], 'Date Discovered': r['Date Discovered'],
     'Latitude': r['Latitude'], 'Longitude': r['Longitude'], 'OSM Tags': r['OSM Tags'],
     'Review Status': 'Needs Review', 'Matched Prospect Row': '', 'Notes': '', 'Possible Duplicate': possibleDuplicate || ''
@@ -323,10 +324,12 @@ function makeInboxRow_(r, possibleDuplicate) {
 
 function getEmailQueue_(limit) {
   const ss = getAutomationSpreadsheet_();
+  // Keep the user's existing prospects ahead of newly discovered inbox leads.
   const tabs = [ss.getSheetByName(OHIO_CONFIG.PROSPECTS), ss.getSheetByName(OHIO_CONFIG.INBOX)].filter(Boolean);
-  const cap = Math.max(1, Math.min(Number(limit) || 20, OHIO_CONFIG.EMAIL_BATCH_MAX));
+  const cap = Math.max(1, Math.min(Number(limit) || OHIO_CONFIG.EMAIL_BATCH_MAX, OHIO_CONFIG.EMAIL_BATCH_MAX));
   const results = [];
   const now = new Date();
+
   tabs.forEach(function(sheet) {
     if (results.length >= cap) return;
     const state = getSheetState_(sheet);
@@ -337,18 +340,45 @@ function getEmailQueue_(limit) {
     const emailCol = headerCol_(state.headers, 'Public Email');
     const statusCol = headerCol_(state.headers, 'Email Research Status');
     const updateCol = headerCol_(state.headers, 'Last Automation Update');
+    const scoreCol = headerCol_(state.headers, 'Lead Score (0-100)');
     if (!idCol || !nameCol || !websiteCol || !statusCol) return;
-    for (let i = 0; i < state.values.length && results.length < cap; i++) {
-      const rowNum = i + 2;
+
+    const candidates = [];
+    for (let i = 0; i < state.values.length; i++) {
       const row = state.values[i];
       const website = clean_(row[websiteCol - 1]);
       const email = emailCol ? row[emailCol - 1] : '';
-      if (!website || (!isBlank_(email) && !isPlaceholder_(email))) continue;
+      if (!clean_(row[nameCol - 1]) || !website || (!isBlank_(email) && !isPlaceholder_(email))) continue;
+
       const status = clean_(row[statusCol - 1]);
       const lastUpdate = updateCol ? row[updateCol - 1] : '';
-      const staleProcessing = /^Processing/i.test(status) && lastUpdate instanceof Date && ((now - lastUpdate) / 3600000 > OHIO_CONFIG.PROCESSING_STALE_HOURS);
+      const staleProcessing = /^Processing/i.test(status) && lastUpdate instanceof Date &&
+        ((now - lastUpdate) / 3600000 > OHIO_CONFIG.PROCESSING_STALE_HOURS);
       const pending = !status || /^Pending$/i.test(status) || /^Retry/i.test(status) || staleProcessing;
       if (!pending) continue;
+
+      const rawScore = scoreCol ? Number(row[scoreCol - 1]) : 0;
+      candidates.push({
+        rowNum: i + 2,
+        row: row,
+        score: Number.isFinite(rawScore) ? rawScore : 0,
+        originalIndex: i
+      });
+    }
+
+    // Prospects have lead scores; work the highest-value existing prospects first.
+    // Inbox entries have no lead score column and retain their discovery order.
+    if (sheet.getName() === OHIO_CONFIG.PROSPECTS && scoreCol) {
+      candidates.sort(function(a, b) {
+        return (b.score - a.score) || (a.originalIndex - b.originalIndex);
+      });
+    }
+
+    candidates.forEach(function(candidate) {
+      if (results.length >= cap) return;
+      const rowNum = candidate.rowNum;
+      const row = candidate.row;
+      const website = clean_(row[websiteCol - 1]);
       let automationId = clean_(row[idCol - 1]);
       if (!automationId) {
         automationId = Utilities.getUuid();
@@ -361,9 +391,10 @@ function getEmailQueue_(limit) {
         business_name: clean_(row[nameCol - 1]),
         website_url: website,
         city: cityCol ? clean_(row[cityCol - 1]) : '',
-        sheet_name: sheet.getName()
+        sheet_name: sheet.getName(),
+        lead_score: candidate.score
       });
-    }
+    });
   });
   return {ok: true, records: results, count: results.length};
 }
@@ -393,6 +424,7 @@ function saveEmailResults_(results) {
     const checkedCol = headerCol_(entry.headers, 'Email Checked At');
     const statusCol = headerCol_(entry.headers, 'Email Research Status');
     const updateCol = headerCol_(entry.headers, 'Last Automation Update');
+    const notesCol = headerCol_(entry.headers, 'Email Research Notes');
     const existingEmail = emailCol ? clean_(entry.values[emailCol - 1]) : '';
     const foundEmail = clean_(result.email);
     let status = clean_(result.status) || 'Checked';
@@ -411,6 +443,7 @@ function saveEmailResults_(results) {
     }
     if (checkedCol) entry.sheet.getRange(entry.row, checkedCol).setValue(result.checked_at ? new Date(result.checked_at) : new Date());
     if (statusCol) entry.sheet.getRange(entry.row, statusCol).setValue(status);
+    if (notesCol && clean_(result.note)) entry.sheet.getRange(entry.row, notesCol).setValue(clean_(result.note));
     if (updateCol) entry.sheet.getRange(entry.row, updateCol).setValue(new Date());
     updated++;
   });
