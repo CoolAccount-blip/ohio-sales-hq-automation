@@ -370,27 +370,33 @@ function getEmailResearchSettings_() {
   const enabledRaw = props.getProperty('OHIO_EMAIL_RESEARCH_ENABLED');
   const runsRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RUNS_PER_DAY'));
   const batchRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_BATCH_SIZE'));
+  const pagesRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_PAGES_PER_SITE'));
+  const retryRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RETRY_HOURS'));
   const allowedRuns = [1, 2, 3, 4, 6, 8];
   const runsPerDay = allowedRuns.indexOf(runsRaw) >= 0 ? runsRaw : 4;
   const batchSize = Number.isFinite(batchRaw) ? Math.max(10, Math.min(100, Math.round(batchRaw / 5) * 5)) : 50;
+  const pagesPerSite = Number.isFinite(pagesRaw) ? Math.max(3, Math.min(8, Math.round(pagesRaw))) : 5;
+  const retryHours = [6, 12, 24, 48, 72].indexOf(retryRaw) >= 0 ? retryRaw : 24;
   return {
     enabled: enabledRaw === null || enabledRaw === '' ? true : enabledRaw === 'true',
     runsPerDay: runsPerDay,
     batchSize: batchSize,
+    pagesPerSite: pagesPerSite,
+    retryHours: retryHours,
     maxPerDay: runsPerDay * batchSize
   };
 }
 
 function getEmailQueue_(limit) {
   const settings = getEmailResearchSettings_();
-  if (!settings.enabled) return {ok: true, enabled: false, scheduled: false, reason: 'paused', records: [], count: 0};
+  if (!settings.enabled) return {ok: true, enabled: false, scheduled: false, reason: 'paused', records: [], count: 0, settings: settings};
   const props = PropertiesService.getScriptProperties();
   const now = new Date();
   const lastRunRaw = props.getProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT');
   const lastRun = lastRunRaw ? new Date(lastRunRaw) : null;
   const minimumIntervalMs = (24 / settings.runsPerDay) * 60 * 60 * 1000;
   if (lastRun && !isNaN(lastRun.getTime()) && (now.getTime() - lastRun.getTime()) < minimumIntervalMs) {
-    return {ok: true, enabled: true, scheduled: false, reason: 'not_due', next_run_after: new Date(lastRun.getTime() + minimumIntervalMs).toISOString(), records: [], count: 0};
+    return {ok: true, enabled: true, scheduled: false, reason: 'not_due', next_run_after: new Date(lastRun.getTime() + minimumIntervalMs).toISOString(), records: [], count: 0, settings: settings};
   }
 
   const ss = getAutomationSpreadsheet_();
@@ -435,7 +441,7 @@ function getEmailQueue_(limit) {
         ((now - lastUpdateDate) / 3600000 > OHIO_CONFIG.PROCESSING_STALE_HOURS);
       // Transient failures retry after 24 hours unless the user explicitly retries them sooner.
       const retryReady = /^Retry/i.test(status) && (!lastUpdateDate || isNaN(lastUpdateDate.getTime()) ||
-        ((now - lastUpdateDate) / 3600000 >= 24));
+        ((now - lastUpdateDate) / 3600000 >= settings.retryHours));
       const pending = !status || /^Pending$/i.test(status) || retryReady || staleProcessing;
       if (!pending) continue;
 
@@ -481,7 +487,7 @@ function getEmailQueue_(limit) {
   if (results.length) props.setProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT', now.toISOString());
   return {
     ok: true, enabled: true, scheduled: true, reason: results.length ? 'started' : 'queue_empty',
-    batch_size: cap, records: results, count: results.length
+    batch_size: cap, records: results, count: results.length, settings: settings
   };
 }
 
