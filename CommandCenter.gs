@@ -36,6 +36,7 @@ function ohioCommandCenterOnOpen() {
     .createMenu('Ohio Sales HQ Controls')
     .addItem('Open Command Center', 'openOhioCommandCenter')
     .addItem('Refresh Command Center', 'refreshOhioCommandCenter')
+    .addItem('Refresh Call Queue', 'refreshOhioCallQueue')
     .addSeparator()
     .addItem('Prioritize Next Email Research Run', 'prioritizeNextOhioEmailRun')
     .addItem('Retry Failed Email Research', 'retryFailedOhioEmailResearch')
