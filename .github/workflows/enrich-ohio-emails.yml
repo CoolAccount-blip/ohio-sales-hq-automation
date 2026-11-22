@@ -4,15 +4,19 @@ on:
   workflow_dispatch:
   schedule:
     # Daily at 13:30 UTC; processes a capped batch from the Google Sheet queue.
-    - cron: '30 13 * * *'
+    - cron: '30 1,13 * * *'
 
 permissions:
   contents: read
 
+concurrency:
+  group: ohio-email-research-queue
+  cancel-in-progress: false
+
 jobs:
   enrich:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out automation code
         uses: actions/checkout@v7
@@ -27,4 +31,4 @@ jobs:
           SHEETS_WEBHOOK_URL: ${{ secrets.SHEETS_WEBHOOK_URL }}
           SHEETS_WEBHOOK_SECRET: ${{ secrets.SHEETS_WEBHOOK_SECRET }}
         run: |
-          python email_enricher.py --webhook-url "$SHEETS_WEBHOOK_URL" --webhook-secret "$SHEETS_WEBHOOK_SECRET" --max-records 20
+          python email_enricher.py --webhook-url "$SHEETS_WEBHOOK_URL" --webhook-secret "$SHEETS_WEBHOOK_SECRET" --max-records 40
