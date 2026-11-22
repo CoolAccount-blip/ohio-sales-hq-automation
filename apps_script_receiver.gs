@@ -40,20 +40,18 @@ const OHIO_CONFIG = {
 /** Shared exclusion gate for chain retailers that are not local-business prospects. */
 function isExcludedChainBusiness_(business) {
   var name = String(business || '').toLowerCase().replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!name) return false;
+    .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^the\s+/, '');
   var patterns = [
-    /\bwalmart\b/, /\bsam s club\b/, /^target(?: store| optical| pharmacy| distribution center)?(?: \d+)?$/,
-    /\bhome depot\b/, /\blowe s\b/, /\bmenards\b/, /\bcostco\b/,
-    /\bkroger\b/, /\bmeijer\b/, /\bwhole foods\b/, /\baldi\b/, /\blidl\b/,
-    /\bcvs\b/, /\bwalgreens\b/, /\brite aid\b/, /\bbest buy\b/, /\bbig lots\b/,
-    /\bdollar general\b/, /\bdollar tree\b/, /\btractor supply\b/, /\bpetco\b/,
-    /\bpetsmart\b/, /\bstaples\b/, /\boffice depot\b/, /\badvance auto parts\b/,
-    /\bauto ?zone\b/, /\bo reilly auto parts\b/, /\bace hardware\b/, /\btrue value\b/
+    /^walmart\b/, /^sam s club\b/, /^target(?:$| store\b| optical\b| pharmacy\b| distribution\b)/,
+    /^home depot\b/, /^lowe s\b/, /^lowes\b/, /^menards\b/, /^costco\b/,
+    /^kroger\b/, /^meijer\b/, /^whole foods\b/, /^aldi\b/, /^lidl\b/,
+    /^cvs\b/, /^walgreens\b/, /^rite aid\b/, /^best buy\b/, /^big lots\b/,
+    /^dollar general\b/, /^dollar tree\b/, /^tractor supply\b/, /^petco\b/,
+    /^petsmart\b/, /^staples\b/, /^office depot\b/, /^advance auto parts\b/,
+    /^auto ?zone\b/, /^o reilly auto parts\b/, /^ace hardware\b/, /^true value\b/
   ];
   return patterns.some(function(pattern) { return pattern.test(name); });
 }
-
 
 /** Resolve the target sheet reliably in both editor runs and Web App executions. */
 function getAutomationSpreadsheet_() {
@@ -387,13 +385,18 @@ function getEmailQueue_(limit) {
     const updateCol = headerCol_(state.headers, 'Last Automation Update');
     const scoreCol = headerCol_(state.headers, 'Lead Score (0-100)');
     const reviewCol = headerCol_(state.headers, 'Review Status');
+    const possibleDuplicateCol = headerCol_(state.headers, 'Possible Duplicate');
     if (!idCol || !nameCol || !websiteCol || !statusCol) return;
 
     const candidates = [];
     for (let i = 0; i < state.values.length; i++) {
       const row = state.values[i];
       const reviewStatus = reviewCol ? clean_(row[reviewCol - 1]) : '';
-      if (sheet.getName() === OHIO_CONFIG.INBOX && /^(promoted|duplicate)/i.test(reviewStatus)) continue;
+      if (sheet.getName() === OHIO_CONFIG.INBOX &&
+          /^(promoted|duplicate|possible duplicate|excluded)/i.test(reviewStatus)) continue;
+      if (possibleDuplicateCol && !isBlank_(row[possibleDuplicateCol - 1])) continue;
+      const businessName = clean_(row[nameCol - 1]);
+      if (isExcludedChainBusiness_(businessName)) continue;
       const website = clean_(row[websiteCol - 1]);
       const email = emailCol ? row[emailCol - 1] : '';
       if (!clean_(row[nameCol - 1]) || isExcludedChainBusiness_(row[nameCol - 1]) ||
@@ -631,8 +634,12 @@ function mergeInboxDuplicatesIntoProspects_(prospects, inbox, logs) {
 function backupSheet_(sheet, baseName) {
   const ss = getAutomationSpreadsheet_();
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+  const base = baseName + ' ' + stamp;
+  let unique = base;
+  let suffix = 2;
+  while (ss.getSheetByName(unique)) unique = base + ' (' + suffix++ + ')';
   const copy = sheet.copyTo(ss);
-  copy.setName(baseName + ' ' + stamp);
+  copy.setName(unique);
 }
 
 function initializeAutomationRows_(sheet) {
