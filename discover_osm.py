@@ -56,10 +56,10 @@ def clean(value: object) -> str:
 import re
 
 EXCLUDED_CHAIN_RE = re.compile(
-    r"^(?:the\\s+)?(?:walmart|sam'?s club|target(?:$|\\s+(?:store|optical|pharmacy|distribution)\\b)|home depot|"
+    r"^(?:the\s+)?(?:walmart|sam'?s club|target(?:$|\s+\d+\b|\s+(?:store|optical|pharmacy|distribution)\b)|home depot|"
     r"lowe'?s|menards|costco|kroger|meijer|whole foods|aldi|lidl|cvs|walgreens|rite aid|"
     r"best buy|big lots|dollar general|dollar tree|tractor supply|petco|petsmart|staples|"
-    r"office depot|advance auto parts|auto ?zone|o'?reilly auto parts|ace hardware|true value)\\b",
+    r"office depot|advance auto parts|auto ?zone|o reilly auto parts|ace hardware|true value)\b",
     re.IGNORECASE,
 )
 
