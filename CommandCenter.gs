@@ -71,7 +71,9 @@ function refreshOhioCommandCenter() {
 
 function createOhioCommandCenterSheet_(ss) {
   let sh = ss.getSheetByName('Command Center');
+  const isNew = !sh;
   if (!sh) sh = ss.insertSheet('Command Center', 0);
+  if (!isNew && sh.getLastRow() > 0) return sh;
   const content = [
     ['OHIO SALES HQ', '', '', '', '', '', '', ''],
     ['Your prospecting operation at a glance', '', '', '', '', '', '', ''],
