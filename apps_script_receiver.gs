@@ -341,11 +341,14 @@ function getEmailQueue_(limit) {
     const statusCol = headerCol_(state.headers, 'Email Research Status');
     const updateCol = headerCol_(state.headers, 'Last Automation Update');
     const scoreCol = headerCol_(state.headers, 'Lead Score (0-100)');
+    const reviewCol = headerCol_(state.headers, 'Review Status');
     if (!idCol || !nameCol || !websiteCol || !statusCol) return;
 
     const candidates = [];
     for (let i = 0; i < state.values.length; i++) {
       const row = state.values[i];
+      const reviewStatus = reviewCol ? clean_(row[reviewCol - 1]) : '';
+      if (sheet.getName() === OHIO_CONFIG.INBOX && /^(promoted|duplicate)/i.test(reviewStatus)) continue;
       const website = clean_(row[websiteCol - 1]);
       const email = emailCol ? row[emailCol - 1] : '';
       if (!clean_(row[nameCol - 1]) || !website || (!isBlank_(email) && !isPlaceholder_(email))) continue;
