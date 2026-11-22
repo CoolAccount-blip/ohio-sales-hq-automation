@@ -99,8 +99,12 @@ const sameNameDifferentAddress = context.ingestRecords_([{
   'OSM ID':'node:3','Business Name':'New Plumbing Co','Industry':'Plumber','City':'Dayton',
   'Address':'400 Oak St, Dayton, OH 45402','Website URL':'https://newplumbing.example'
 }]);
-assert.strictEqual(sameNameDifferentAddress.added,1,'different address branch should be placed in review inbox');
-assert(inbox.getRange(3,colInbox('Possible Duplicate')).getValue().startsWith('Review —'), 'same-name/city different address should be flagged');
+assert.strictEqual(sameNameDifferentAddress.added,0,'same-name/city candidate must not enter the active Discovery Inbox');
+assert.strictEqual(sameNameDifferentAddress.possible_duplicate_review,1,'ambiguous same-name/city candidate should be quarantined for review');
+const possibleReview = ss.getSheetByName('Possible Duplicate Review');
+assert.strictEqual(possibleReview.getLastRow(),2,'possible duplicate should be held in the separate review tab');
+assert(possibleReview.getRange(2,colInbox('Review Status')).getValue().startsWith('Possible Duplicate'), 'same-name/city different address should be flagged in review tab');
+assert.strictEqual(inbox.getLastRow(),2,'active inbox should retain only the original business record');
 const queue = context.getEmailQueue_(10);
 assert(queue.records.length >= 1,'website without an email should enter the queue');
 const queued = queue.records.find(x=>x.business_name === 'New Plumbing Co');
