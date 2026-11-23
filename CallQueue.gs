@@ -71,14 +71,14 @@ function callSelectedOhioLeadOnMac() {
   // Google Sheets' HYPERLINK() blocks tel: URLs. This user-clicked HTML link
   // hands the tel: URI to the browser, which can open the Mac's registered
   // calling app (FaceTime/Phone) when Continuity calling is configured.
-  const html = '<!DOCTYPE html><html><head><base target="_top">' +
+  const html = '<!DOCTYPE html><html><head><base target="_blank">' +
     '<style>body{font:14px Arial,sans-serif;padding:18px;color:#172554}' +
     'a{display:inline-block;background:#1d4ed8;color:white;padding:11px 18px;' +
     'border-radius:6px;text-decoration:none;font-weight:600}' +
     '.muted{color:#64748b;font-size:12px;margin-top:14px}</style></head><body>' +
     '<h3 style="margin:0 0 8px">Call ' + business + '</h3>' +
     '<p style="margin:0 0 18px">' + shownPhone + '</p>' +
-    '<a href="' + tel + '" target="_top">Open calling app</a>' +
+    '<a href="' + tel + '" target="_blank" rel="noopener">Open calling app</a>' +
     '<p class="muted">Your Mac may ask which app to use. Confirm the call in the app.</p>' +
     '</body></html>';
 
