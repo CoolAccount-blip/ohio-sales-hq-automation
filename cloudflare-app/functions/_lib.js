@@ -68,25 +68,3 @@ export async function requireAuth(request, env) {
   return null;
 }
 
-export async function callAppsScript(env, action, payload = {}) {
-  if (!env.APPS_SCRIPT_URL || !env.WEBHOOK_SECRET) {
-    return json({ ok: false, error: "The Sheets connection has not been configured yet. Add APPS_SCRIPT_URL and WEBHOOK_SECRET in Cloudflare settings." }, 503);
-  }
-  let response;
-  try {
-    response = await fetch(env.APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: env.WEBHOOK_SECRET, action, ...payload }),
-      redirect: "follow"
-    });
-  } catch (error) {
-    return json({ ok: false, error: "Could not reach the Google Sheets connection: " + String(error.message || error) }, 502);
-  }
-  const raw = await response.text();
-  let data;
-  try { data = JSON.parse(raw); }
-  catch { return json({ ok: false, error: "The Sheets connection returned an unexpected response. Check that the Apps Script web app is deployed and the webhook secret matches." }, 502); }
-  if (!response.ok || data.ok === false) return json({ ok: false, error: data.error || "The Sheets request failed." }, 502);
-  return json(data);
-}
