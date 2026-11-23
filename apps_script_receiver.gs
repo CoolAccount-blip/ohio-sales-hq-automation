@@ -100,7 +100,10 @@ function doPost(e) {
     } else if (action === 'ingest') {
       result = ingestRecords_(body.records);
     } else if (action === 'get_email_queue') {
-      result = getEmailQueue_(body.limit);
+      // The authenticated drain mode bypasses only the normal run interval;
+      // the queue still excludes existing emails, duplicates, chains and
+      // retries that have not reached their configured retry window.
+      result = getEmailQueue_(body.limit, body.force === true);
     } else if (action === 'save_email_results') {
       result = saveEmailResults_(body.results);
     } else if (action === 'app_dashboard') {
@@ -454,7 +457,7 @@ function saveOhioEmailResearchSettings(settings) {
   return getEmailResearchSettings_();
 }
 
-function getEmailQueue_(limit) {
+function getEmailQueue_(limit, force) {
   const settings = getEmailResearchSettings_();
   if (!settings.enabled) return {ok: true, enabled: false, scheduled: false, reason: 'paused', records: [], count: 0, settings: settings};
   const props = PropertiesService.getScriptProperties();
@@ -462,14 +465,18 @@ function getEmailQueue_(limit) {
   const lastRunRaw = props.getProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT');
   const lastRun = lastRunRaw ? new Date(lastRunRaw) : null;
   const minimumIntervalMs = (24 / settings.runsPerDay) * 60 * 60 * 1000;
-  if (lastRun && !isNaN(lastRun.getTime()) && (now.getTime() - lastRun.getTime()) < minimumIntervalMs) {
+  if (!force && lastRun && !isNaN(lastRun.getTime()) && (now.getTime() - lastRun.getTime()) < minimumIntervalMs) {
     return {ok: true, enabled: true, scheduled: false, reason: 'not_due', next_run_after: new Date(lastRun.getTime() + minimumIntervalMs).toISOString(), records: [], count: 0, settings: settings};
   }
 
   const ss = getAutomationSpreadsheet_();
   // Keep the user's existing prospects ahead of newly discovered inbox leads.
   const tabs = [ss.getSheetByName(OHIO_CONFIG.PROSPECTS), ss.getSheetByName(OHIO_CONFIG.INBOX)].filter(Boolean);
-  const cap = settings.batchSize;
+  // Force/drain is available only through the secret-protected webhook. It
+  // does not override candidate exclusions or retryHours; it only allows the
+  // caller to request another chunk without waiting for the scheduled window.
+  const requested = Number(limit);
+  const cap = force ? Math.max(1, Math.min(100, Number.isFinite(requested) && requested > 0 ? Math.floor(requested) : 100)) : settings.batchSize;
   const results = [];
 
   tabs.forEach(function(sheet) {
