@@ -94,7 +94,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
     </section>
     <section id="settings" class="hidden">
       <div class="settingsgrid">
-        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">The website-email crawler remains on the existing GitHub Actions schedule. These saved preferences control its run interval, batch size, page depth, and retry window.</div>
+        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">The website-email crawler remains on the existing GitHub Actions schedule. After the updated Apps Script receiver is deployed, it will read these saved run, batch, page-depth, and retry preferences.</div>
           <div class="toggleline"><div><strong>Automatic research</strong><small>Pause or resume website checks</small></div><input id="enabled" class="switch" type="checkbox"></div>
           <div class="fieldrow"><div class="field"><label for="runs">Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div><div class="field"><label for="batch">Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
           <div class="fieldrow"><div class="field"><label for="pages">Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div><div class="field"><label for="retry">Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
@@ -256,6 +256,8 @@ function openProspectModal(index){
   detailTile("Website / mobile",[(r.hasWebsite||"Website unknown"),(r.mobileFriendly||"Mobile status unknown")].join(" · "))+
   detailTile("Recent review activity",r.recentActivity)+
   detailTile("Recommended service",r.recommendedService)+
+  detailTile("Contact page listed",r.contactPage)+
+  detailTile("Added / last contacted",[r.dateAdded,r.lastContacted].filter(Boolean).join(" · "),true)+
   detailTile("Why it qualifies",r.qualificationReason,true)+
   detailTile("Email research",[(r.emailResearchStatus||"Status not recorded"),(r.emailConfidence||""),(r.emailType||"")].filter(Boolean).join(" · "),true)+
   detailTile("Research notes",r.emailResearchNotes,true)+
