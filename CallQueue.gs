@@ -135,15 +135,10 @@ function refreshOhioCallQueue() {
     sh.getRange(2, 1, values.length, OHIO_CALL_QUEUE.HEADERS.length).setValues(values);
     candidates.forEach(function(item, i) {
       const row = i + 2;
-      // Make the phone number itself clickable, and keep the dedicated CALL link.
-      // The tel: URI is normalized for North American numbers so macOS can hand it
-      // to the user's default calling app (FaceTime, iPhone, or another handler).
-      const telUri = callQueueTelUri_(item.values[2]);
-      const phoneLabel = String(item.values[2] || '').trim();
-      if (telUri && phoneLabel) {
-        sh.getRange(row, 3).setFormula('=HYPERLINK("' + telUri + '","' + phoneLabel.replace(/"/g, '""') + '")');
-        sh.getRange(row, 4).setFormula('=HYPERLINK("' + telUri + '","CALL")');
-      }
+      // Keep Phone as ordinary text. SheetDialer reads the selected phone cell
+      // directly; tel: HYPERLINK formulas are not reliable in Google Sheets.
+      sh.getRange(row, 3).setNumberFormat('@');
+      sh.getRange(row, 4).setValue('Click Phone');
       const url = String(item.values[8] || '').trim();
       if (url) {
         const normalized = /^https?:\/\//i.test(url) ? url : 'https://' + url;
@@ -286,15 +281,6 @@ function callQueueKey_(business, phone, address, city) {
   const place = String(address || city || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   if (!name) return '';
   return name + '|' + (digits || place);
-}
-
-function callQueueTelUri_(value) {
-  const raw = String(value || '').trim();
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return 'tel:+1' + digits;
-  if (digits.length === 11 && digits.charAt(0) === '1') return 'tel:+' + digits;
-  if (raw.charAt(0) === '+') return 'tel:+' + digits;
-  return digits.length >= 7 ? 'tel:' + digits : '';
 }
 
 function callQueuePadRow_(row, width) {
