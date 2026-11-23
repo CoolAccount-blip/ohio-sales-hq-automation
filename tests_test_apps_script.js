@@ -161,7 +161,28 @@ scriptProperties.OHIO_EMAIL_RESEARCH_LAST_RUN_AT = '';
 const prioritized = context.getEmailQueue_(40);
 assert.strictEqual(prioritized.records[0].business_name, 'Higher Score Prospect', 'highest lead-score existing prospect should be researched first');
 assert.strictEqual(prioritized.records[1].business_name, 'Lower Score Prospect', 'lower-scoring prospect should follow higher-scoring prospect');
-assert(prioritized.records.length <= 50, 'email queue must respect the configured 50-record batch cap');
+assert(prioritized.records.length <= 50, 'normal scheduled email queue must respect the configured 50-record batch cap');
+
+// Queue-drain mode bypasses only the normal run interval and may request up to
+// 100 records. It must still use the same eligible-record filters.
+scriptProperties.OHIO_EMAIL_RESEARCH_LAST_RUN_AT = new Date().toISOString();
+const throttled = context.getEmailQueue_(100);
+assert.strictEqual(throttled.scheduled, false, 'normal queue requests must still respect the scheduled run interval');
+const prospectHeadersForDrain = prospects.getRange(1,1,1,prospects.getLastColumn()).getDisplayValues()[0];
+const drainStatusCol = prospectHeadersForDrain.indexOf('Email Research Status') + 1;
+const drainUpdatedCol = prospectHeadersForDrain.indexOf('Last Automation Update') + 1;
+for (let row=2; row<=prospects.getLastRow(); row++) {
+  const name = prospects.getRange(row,1).getValue();
+  if (name === 'Higher Score Prospect' || name === 'Lower Score Prospect') {
+    prospects.getRange(row,drainStatusCol).setValue('Pending');
+    if (drainUpdatedCol > 0) prospects.getRange(row,drainUpdatedCol).setValue('');
+  }
+}
+const forcedQueue = context.getEmailQueue_(100, true);
+assert.strictEqual(forcedQueue.scheduled, true, 'authenticated queue-drain mode must bypass only the normal run interval');
+assert(forcedQueue.records.some(x=>x.business_name === 'Higher Score Prospect'), 'drain mode should continue returning pending businesses');
+assert(forcedQueue.records.length <= 100, 'drain mode must remain capped at 100 websites per batch');
+
 const savedSettings = context.saveOhioEmailResearchSettings({
   enabled: false, runsPerDay: 6, batchSize: 35, pagesPerSite: 7, retryHours: 12
 });
