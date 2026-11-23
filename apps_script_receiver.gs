@@ -103,6 +103,18 @@ function doPost(e) {
       result = getEmailQueue_(body.limit);
     } else if (action === 'save_email_results') {
       result = saveEmailResults_(body.results);
+    } else if (action === 'app_dashboard') {
+      result = ohioCfAppDashboard_();
+    } else if (action === 'app_leads') {
+      result = ohioCfAppLeads_(body);
+    } else if (action === 'app_calls') {
+      result = ohioCfAppCalls_(body);
+    } else if (action === 'app_save_settings') {
+      result = ohioCfAppSaveSettings_(body.settings || {});
+    } else if (action === 'app_save_call') {
+      result = ohioCfAppSaveCall_(body);
+    } else if (action === 'app_refresh_calls') {
+      result = refreshOhioCallQueue();
     } else {
       result = {ok: false, error: 'Unknown action.'};
     }
@@ -846,4 +858,148 @@ function logAutomation_(action, received, added, mergedP, mergedI, queueSize, no
 }
 function jsonResponse_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+
+/* Cloudflare-hosted Ohio Sales HQ app API actions. */
+function ohioCfAppDashboard_() {
+  var ss = getAutomationSpreadsheet_();
+  var metrics = {prospects: 0, inbox: 0, found: 0, pending: 0, callQueue: 0, replies: 0};
+  function countRows(sheetName) {
+    var sh = ss.getSheetByName(sheetName);
+    return sh ? Math.max(0, sh.getLastRow() - 1) : 0;
+  }
+  metrics.prospects = countRows(OHIO_CONFIG.PROSPECTS);
+  metrics.inbox = countRows(OHIO_CONFIG.INBOX);
+  metrics.callQueue = countRows('Call Queue');
+  metrics.replies = countRows('Reply Tracker');
+
+  if (typeof getOhioCommandCenterData === 'function') {
+    var center = getOhioCommandCenterData();
+    metrics.found = Number(center.metrics && center.metrics.found) || 0;
+    metrics.pending = Number(center.metrics && center.metrics.pending) || 0;
+  }
+  var props = PropertiesService.getScriptProperties();
+  var settings = (typeof getEmailResearchSettings_ === 'function')
+    ? getEmailResearchSettings_() : {};
+  return {
+    ok: true,
+    metrics: metrics,
+    settings: settings,
+    activity: {
+      lastRun: props.getProperty('OHIO_EMAIL_RESEARCH_LAST_RUN_AT') || '',
+      lastCompleted: props.getProperty('OHIO_EMAIL_RESEARCH_LAST_COMPLETED_AT') || '',
+      lastBatchProcessed: Number(props.getProperty('OHIO_EMAIL_RESEARCH_LAST_BATCH_PROCESSED')) || 0,
+      lastBatchFound: Number(props.getProperty('OHIO_EMAIL_RESEARCH_LAST_BATCH_FOUND')) || 0
+    }
+  };
+}
+
+function ohioCfAppLeads_(request) {
+  var ss = getAutomationSpreadsheet_();
+  var sh = ss.getSheetByName(OHIO_CONFIG.PROSPECTS);
+  if (!sh || sh.getLastRow() < 2) return {ok: true, rows: [], total: 0, page: 1, pages: 1};
+  var lastCol = sh.getLastColumn();
+  var headers = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var values = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getDisplayValues();
+  var col = function(name) {
+    var index = headers.findIndex(function(h) { return String(h || '').trim().toLowerCase() === name.toLowerCase(); });
+    return index < 0 ? -1 : index;
+  };
+  var cityCol = col('City (OH)') >= 0 ? col('City (OH)') : col('City');
+  var fields = {
+    name: col('Business Name'), email: col('Public Email'), phone: col('Phone Number'),
+    industry: col('Industry'), city: cityCol, status: col('Sales Status'),
+    score: col('Lead Score'), website: col('Website URL')
+  };
+  var query = String(request.query || '').trim().toLowerCase();
+  var filtered = values.filter(function(row) {
+    if (fields.name < 0 || !row[fields.name]) return false;
+    if (!query) return true;
+    return Object.keys(fields).some(function(key) {
+      var index = fields[key];
+      return index >= 0 && String(row[index] || '').toLowerCase().indexOf(query) >= 0;
+    });
+  });
+  var size = Math.max(10, Math.min(100, Number(request.pageSize) || 25));
+  var total = filtered.length;
+  var pages = Math.max(1, Math.ceil(total / size));
+  var page = Math.max(1, Math.min(pages, Number(request.page) || 1));
+  var rows = filtered.slice((page - 1) * size, page * size).map(function(row) {
+    var val = function(index) { return index >= 0 ? String(row[index] || '') : ''; };
+    return {name: val(fields.name), email: val(fields.email), phone: val(fields.phone),
+      industry: val(fields.industry), city: val(fields.city), status: val(fields.status),
+      score: val(fields.score), website: val(fields.website)};
+  });
+  return {ok: true, rows: rows, total: total, page: page, pages: pages, pageSize: size};
+}
+
+function ohioCfAppCalls_(request) {
+  var ss = getAutomationSpreadsheet_();
+  var sh = ss.getSheetByName('Call Queue');
+  if (!sh || sh.getLastRow() < 2) return {ok: true, rows: []};
+  var data = sh.getDataRange().getDisplayValues();
+  var headers = data[0];
+  var col = function(name) {
+    return headers.findIndex(function(h) { return String(h || '').trim().toLowerCase() === name.toLowerCase(); });
+  };
+  var query = String(request.query || '').trim().toLowerCase();
+  var nameCol = col('Business Name');
+  var rows = data.slice(1).map(function(row, index) {
+    var val = function(name) { var i = col(name); return i >= 0 ? String(row[i] || '') : ''; };
+    return {rowNumber: index + 2, name: val('Business Name'), phone: val('Phone'),
+      city: val('City'), industry: val('Industry'), score: val('Likelihood Score (0-100)'),
+      outcome: val('Call Outcome'), notes: val('Call Notes'), followUp: val('Follow-up Date'),
+      leadKey: val('Lead Key')};
+  }).filter(function(item) {
+    if (!item.name) return false;
+    if (!query) return true;
+    return [item.name, item.phone, item.city, item.industry, item.outcome]
+      .some(function(value) { return String(value || '').toLowerCase().indexOf(query) >= 0; });
+  });
+  return {ok: true, rows: rows.slice(0, 150), total: rows.length};
+}
+
+function ohioCfAppSaveSettings_(settings) {
+  if (typeof saveOhioEmailResearchSettings !== 'function') {
+    throw new Error('The email research settings module is not installed in this Apps Script project.');
+  }
+  saveOhioEmailResearchSettings(settings);
+  return {ok: true, settings: ohioCfAppDashboard_().settings};
+}
+
+function ohioCfAppSaveCall_(request) {
+  var key = String(request.leadKey || '').trim();
+  if (!key) throw new Error('Missing call queue lead key.');
+  var ss = getAutomationSpreadsheet_();
+  var sh = ss.getSheetByName('Call Queue');
+  if (!sh || sh.getLastRow() < 2) throw new Error('Call Queue tab was not found.');
+  var lastCol = sh.getLastColumn();
+  var headers = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var col = function(name) {
+    var index = headers.findIndex(function(h) { return String(h || '').trim().toLowerCase() === name.toLowerCase(); });
+    return index < 0 ? 0 : index + 1;
+  };
+  var keyCol = col('Lead Key');
+  if (!keyCol) throw new Error('Call Queue does not contain a Lead Key column.');
+  var keys = sh.getRange(2, keyCol, sh.getLastRow() - 1, 1).getDisplayValues();
+  var matchIndex = keys.findIndex(function(row) { return String(row[0] || '').trim() === key; });
+  if (matchIndex < 0) throw new Error('That lead is no longer in the Call Queue. Refresh the queue and try again.');
+  var rowNumber = matchIndex + 2;
+  var outcomeCol = col('Call Outcome');
+  var notesCol = col('Call Notes');
+  var followCol = col('Follow-up Date');
+  var allowed = OHIO_CALL_QUEUE.OUTCOMES;
+  var outcome = String(request.outcome || 'Ready to Call');
+  if (allowed.indexOf(outcome) < 0) throw new Error('Choose a valid call outcome.');
+  if (outcomeCol) sh.getRange(rowNumber, outcomeCol).setValue(outcome);
+  if (notesCol) sh.getRange(rowNumber, notesCol).setValue(String(request.notes || '').slice(0, 3000));
+  if (followCol && request.followUp) {
+    var date = new Date(String(request.followUp) + 'T12:00:00');
+    if (isNaN(date.getTime())) throw new Error('Follow-up date is invalid.');
+    sh.getRange(rowNumber, followCol).setValue(date).setNumberFormat('mmm d, yyyy');
+  } else if (followCol) {
+    sh.getRange(rowNumber, followCol).clearContent();
+  }
+  return {ok: true, rowNumber: rowNumber};
 }
