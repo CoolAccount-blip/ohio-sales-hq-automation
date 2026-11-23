@@ -26,6 +26,20 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
 .detailtext{font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .scriptbox{border:1px solid var(--line);background:var(--panel2);padding:14px;border-radius:10px;white-space:pre-wrap;font-size:12px;line-height:1.6;max-height:320px;overflow:auto}
 .modal{max-height:92vh;overflow:auto}
+.callmodal{width:min(1160px,96vw);max-height:94vh;padding:26px}
+.call-workspace{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:16px;margin:15px 0;align-items:start}
+.call-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.call-info-block{margin-top:10px}
+.call-script-panel{height:100%;padding:17px}
+.call-script-panel .scriptbox{max-height:54vh;font-size:13px;line-height:1.7}
+.call-phone-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:7px}
+.call-number{font-size:17px;font-weight:800;letter-spacing:.1px;color:var(--accent);text-decoration:none}
+.call-number:hover{text-decoration:underline}
+.call-now{display:inline-flex;align-items:center;gap:7px;text-decoration:none;padding:9px 14px}
+.call-modal-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(180px,.65fr);gap:12px;padding-top:5px;border-top:1px solid var(--line)}
+.call-modal-fields .field{margin:10px 0}
+.call-modal-fields textarea{min-height:104px}
+@media(max-width:760px){.callmodal{width:96vw;padding:16px}.call-workspace{grid-template-columns:1fr}.call-script-panel .scriptbox{max-height:38vh}.call-modal-fields{grid-template-columns:1fr}.call-details-grid{grid-template-columns:1fr}}
 .leadscore{font-size:12px;font-weight:800;color:var(--accent)}
 @media(max-width:600px){.detailgrid{grid-template-columns:1fr}.detailpanel.wide{grid-column:auto}}
 @media(max-width:920px){.app{grid-template-columns:72px minmax(0,1fr)}.sidebar{padding:20px 8px}.brand{justify-content:center;padding:0 0 24px}.brandname,.navlabel,.navtext,.sidefoot{display:none}.nav button{justify-content:center;padding:12px 4px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.contentgrid{grid-template-columns:1fr}}
@@ -111,13 +125,15 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
   </main>
 </div>
 <div id="callModal" class="modalback hidden" role="dialog" aria-modal="true">
-  <div class="modal">
-    <div class="modalhead"><div><h2 id="modalTitle">Update call</h2><div class="smallmuted" id="modalPhone"></div></div><button class="xbtn" onclick="closeCallModal()">✕</button></div>
+  <div class="modal callmodal">
+    <div class="modalhead"><div style="min-width:0"><h2 id="modalTitle">Update call</h2><div id="modalPhone" class="call-phone-wrap"></div></div><button class="xbtn" aria-label="Close call details" onclick="closeCallModal()">✕</button></div>
     <input id="modalKey" type="hidden">
     <div id="callContext"></div>
-    <div class="field"><label for="modalOutcome">Call outcome</label><select id="modalOutcome"><option>Ready to Call</option><option>No Answer</option><option>Left Voicemail</option><option>Spoke — Follow Up</option><option>Interested</option><option>Not Interested</option><option>Wrong Number</option><option>Do Not Call</option><option>Completed</option></select></div>
-    <div class="field"><label for="modalNotes">Call notes</label><textarea id="modalNotes" placeholder="What happened on the call?"></textarea></div>
-    <div class="field"><label for="modalFollow">Follow-up date</label><input id="modalFollow" type="date"></div>
+    <div class="call-modal-fields">
+      <div class="field"><label for="modalOutcome">Call outcome</label><select id="modalOutcome"><option>Ready to Call</option><option>No Answer</option><option>Left Voicemail</option><option>Spoke — Follow Up</option><option>Interested</option><option>Not Interested</option><option>Wrong Number</option><option>Do Not Call</option><option>Completed</option></select></div>
+      <div class="field"><label for="modalNotes">Call notes</label><textarea id="modalNotes" placeholder="What happened on the call?"></textarea></div>
+      <div class="field"><label for="modalFollow">Follow-up date</label><input id="modalFollow" type="date"></div>
+    </div>
     <div class="modalactions"><button class="btn ghost" onclick="closeCallModal()">Cancel</button><button class="btn" id="saveCallButton" onclick="saveCall()">Save outcome</button></div>
   </div>
 </div>
@@ -216,22 +232,30 @@ function safeWebsiteUrl(value){
 }
 function openCallModal(index){
  const r=callRows[index];if(!r)return;selectedCall=r;
- $("modalTitle").textContent=r.name;$("modalPhone").textContent=[r.phone,r.city,r.address].filter(Boolean).join(" · ");
+ $("modalTitle").textContent=r.name;
+ const phone=String(r.phone||"").trim();
+ const dial=phone?normalizePhone(phone):"";
+ $("modalPhone").innerHTML=phone
+  ? '<a class="call-number" href="tel:'+esc(dial)+'">'+esc(phone)+'</a><a class="btn call-now" href="tel:'+esc(dial)+'">☎ Call now</a><span class="smallmuted">Click the number or Call now to open your Mac calling app.</span>'
+  : '<span class="smallmuted">No phone number listed for this business.</span>';
  $("modalKey").value=r.leadKey;$("modalOutcome").value=r.outcome||"Ready to Call";$("modalNotes").value=r.notes||"";
  $("modalFollow").value=r.followUp?toDateInput(r.followUp):"";
  const website=safeWebsiteUrl(r.website);
  const websiteHtml=website?'<a href="'+esc(website)+'" target="_blank" rel="noopener">Open business website ↗</a>':'No website listed';
- $("callContext").innerHTML='<div class="detailgrid">'+
-  detailTile("Fit score",r.score? r.score+" / 100":"Not scored")+
-  detailTile("Industry",r.industry)+
-  detailTile("Location",r.city)+
-  detailTile("Address",r.address,true)+
-  '<div class="detailpanel"><div class="detaillabel">Website</div><div class="detailtext">'+websiteHtml+'</div></div>'+
-  detailTile("Source",r.sourceSheet? r.sourceSheet+(r.sourceRow?" · row "+r.sourceRow:""):"—")+
-  detailTile("Company overview / research notes",r.overview,true)+
-  detailTile("Why this lead ranks here",r.whyRanksHere,true)+
-  '<div class="detailpanel wide"><div class="detaillabel">Suggested call script</div><div id="callScriptText" class="scriptbox">'+esc(r.script||"No call script saved for this lead.")+'</div><div style="margin-top:10px"><button class="btn secondary" type="button" onclick="copyCallScript()">Copy call script</button></div></div>'+
-  '</div>';
+ $("callContext").innerHTML='<div class="call-workspace">'+
+  '<div class="call-info-column"><div class="call-details-grid">'+
+   detailTile("Fit score",r.score? r.score+" / 100":"Not scored")+
+   detailTile("Industry",r.industry)+
+   detailTile("City",r.city)+
+   detailTile("Address",r.address,true)+
+   '<div class="detailpanel"><div class="detaillabel">Website</div><div class="detailtext">'+websiteHtml+'</div></div>'+
+   detailTile("Source",r.sourceSheet? r.sourceSheet+(r.sourceRow?" · row "+r.sourceRow:""):"—")+
+  '</div>'+
+  '<div class="call-info-block">'+detailTile("Company overview / research notes",r.overview,true)+'</div>'+
+  '<div class="call-info-block">'+detailTile("Why this lead ranks here",r.whyRanksHere,true)+'</div>'+
+  '</div>'+
+  '<div class="call-script-column"><div class="detailpanel call-script-panel"><div class="detaillabel">Suggested call script</div><div id="callScriptText" class="scriptbox">'+esc(r.script||"No call script saved for this lead.")+'</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary" type="button" onclick="copyCallScript()">Copy call script</button>'+(phone?'<a class="btn call-now" href="tel:'+esc(dial)+'">☎ Call '+esc(phone)+'</a>':'')+'</div></div></div>'+
+ '</div>';
  $("callModal").classList.remove("hidden");
 }
 async function copyCallScript(){
