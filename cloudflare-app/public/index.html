@@ -65,7 +65,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
           <div class="action" onclick="go('settings')"><div class="actionicon">⚙</div><div class="actioncopy"><div class="actionname">Tune your workflow</div><div class="actionsub">Adjust how often email research runs</div></div><span class="arrow">→</span></div>
         </div>
         <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Background website checks.</div>
-          <div class="statusrow"><span>Research status</span><strong class="statusvalue" id="researchState">—</strong></div>
+          <div class="statusrow"><span>Saved preference</span><strong class="statusvalue" id="researchState">—</strong></div>
           <div class="statusrow"><span>Last started</span><span class="smallmuted" id="lastRun">—</span></div>
           <div class="statusrow"><span>Last completed</span><span class="smallmuted" id="lastComplete">—</span></div>
           <button class="btn secondary" style="margin-top:13px" onclick="go('settings')">Manage settings</button>
@@ -84,7 +84,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
     </section>
     <section id="settings" class="hidden">
       <div class="settingsgrid">
-        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Control the public website email-finding worker. Changes apply to future runs.</div>
+        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Save your preferred research settings. The scheduled research worker is still being migrated, so these preferences do not control its schedule yet.</div>
           <div class="toggleline"><div><strong>Automatic research</strong><small>Pause or resume website checks</small></div><input id="enabled" class="switch" type="checkbox"></div>
           <div class="fieldrow"><div class="field"><label for="runs">Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div><div class="field"><label for="batch">Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
           <div class="fieldrow"><div class="field"><label for="pages">Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div><div class="field"><label for="retry">Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
