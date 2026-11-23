@@ -35,12 +35,18 @@ async function ensureTab(env,name,headers){
 }
 export async function getSettings(env){
  let rows=[];try{rows=await readTab(env,"App Settings")}catch{}
- const s={enabled:true,runsPerDay:2,batchSize:30,pagesPerSite:5,retryHours:24};
- rows.slice(1).forEach(r=>{const k=String(r[0]||"").trim();if(k==="enabled")s.enabled=String(r[1]).toLowerCase()!=="false";if(["runsPerDay","batchSize","pagesPerSite","retryHours"].includes(k))s[k]=Number(r[1])||s[k]});return s;
+ const s={enabled:true,runsPerDay:2,batchSize:30,pagesPerSite:5,retryHours:24,autoPromoteEnabled:true,promotionMinScore:70};
+ rows.slice(1).forEach(r=>{
+  const k=String(r[0]||"").trim(),value=String(r[1]||"").trim();
+  if(k==="enabled")s.enabled=value.toLowerCase()!=="false";
+  if(["runsPerDay","batchSize","pagesPerSite","retryHours"].includes(k))s[k]=Number(value)||s[k];
+  if(k==="autoPromoteEnabled")s.autoPromoteEnabled=value.toLowerCase()!=="false";
+  if(k==="promotionMinScore"&&[70,75,80,85,90].includes(Number(value)))s.promotionMinScore=Number(value);
+ });return s;
 }
 export async function saveSettings(env,input){
- const s={enabled:!!input.enabled,runsPerDay:Number(input.runsPerDay),batchSize:Number(input.batchSize),pagesPerSite:Number(input.pagesPerSite),retryHours:Number(input.retryHours)};
- if(![1,2,3,4,6,8].includes(s.runsPerDay)||!Number.isInteger(s.batchSize)||s.batchSize<10||s.batchSize>100||s.batchSize%5||!Number.isInteger(s.pagesPerSite)||s.pagesPerSite<3||s.pagesPerSite>8||![6,12,24,48,72].includes(s.retryHours))throw Error("One or more research settings are invalid.");
+ const s={enabled:!!input.enabled,runsPerDay:Number(input.runsPerDay),batchSize:Number(input.batchSize),pagesPerSite:Number(input.pagesPerSite),retryHours:Number(input.retryHours),autoPromoteEnabled:!!input.autoPromoteEnabled,promotionMinScore:Number(input.promotionMinScore)};
+ if(![1,2,3,4,6,8].includes(s.runsPerDay)||!Number.isInteger(s.batchSize)||s.batchSize<10||s.batchSize>100||s.batchSize%5||!Number.isInteger(s.pagesPerSite)||s.pagesPerSite<3||s.pagesPerSite>8||![6,12,24,48,72].includes(s.retryHours)||![70,75,80,85,90].includes(s.promotionMinScore))throw Error("One or more research or promotion settings are invalid.");
  await ensureTab(env,"App Settings",["Setting","Value"]);const rows=await readTab(env,"App Settings");
  for(const [k,val] of Object.entries(s)){const i=rows.slice(1).findIndex(r=>String(r[0]||"")===k);if(i>=0)await write(env,qtab("App Settings")+"!B"+(i+2),[[val]]);else await gs(env,"/values/"+encodeURIComponent(qtab("App Settings")+"!A:B")+":append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS",{method:"POST",body:JSON.stringify({majorDimension:"ROWS",values:[[k,val]]})})}
  return s;
@@ -50,6 +56,49 @@ export async function dashboard(env){
  const m={prospects:Math.max(0,p.length-1),inbox:Math.max(0,d.length-1),found:0,pending:0,callQueue:Math.max(0,c.length-1)};
  [p,d].forEach(rows=>{if(!rows.length)return;const h=rows[0];rows.slice(1).forEach(r=>{if(!v(r,h,"Business Name")||v(r,h,"Possible Duplicate"))return;if(realEmail(v(r,h,"Public Email")))m.found++;else if(v(r,h,"Website URL")&&!/^Checked|^Skipped/i.test(v(r,h,"Email Research Status")))m.pending++})});
  return{ok:true,metrics:m,settings:s,activity:{lastRun:"Existing research automation",lastCompleted:"See Automation Log"}};
+}
+function discoveryCompleteness_(r,h){
+ let score=0;
+ if(v(r,h,"Industry"))score+=25;
+ if(v(r,h,"Business Name").length>=2)score+=10;
+ if(v(r,h,"City (OH)")||v(r,h,"City"))score+=10;
+ if(v(r,h,"Address"))score+=15;
+ if(String(v(r,h,"Phone Number")).replace(/\\D/g,"").length>=7)score+=10;
+ if(v(r,h,"Website URL"))score+=10;
+ if(realEmail(v(r,h,"Public Email")))score+=15;
+ if(v(r,h,"OSM IDs")||(v(r,h,"Latitude")&&v(r,h,"Longitude")))score+=5;
+ return Math.min(100,score);
+}
+export async function discoveries(env,query,page,size){
+ const [rows,settings]=await Promise.all([readTab(env,"Discovery Inbox"),getSettings(env)]);
+ if(!rows.length)return{ok:true,rows:[],total:0,page:1,pages:1,summary:{eligible:0,promoted:0,review:0}};
+ const h=rows[0],q=String(query||"").trim().toLowerCase(),minScore=settings.promotionMinScore||70;
+ const fields=["Business Name","Industry","City (OH)","City","Address","Phone Number","Website URL","Public Email","Review Status","Notes"];
+ const all=rows.slice(1).map((r,i)=>{
+  const name=v(r,h,"Business Name"),city=v(r,h,"City (OH)")||v(r,h,"City"),review=v(r,h,"Review Status"),possible=v(r,h,"Possible Duplicate");
+  const score=discoveryCompleteness_(r,h);
+  const required=!!name&&!!city&&!!v(r,h,"Address")&&!!v(r,h,"Industry");
+  let state="Eligible for next check";
+  if(/^promoted/i.test(review))state="Promoted to Prospects";
+  else if(/^duplicate/i.test(review))state="Duplicate — merged";
+  else if(/^excluded/i.test(review))state="Excluded";
+  else if(possible||/^possible duplicate/i.test(review))state="Manual duplicate review";
+  else if(!required)state="Missing required details";
+  else if(score<minScore)state="Below completeness threshold";
+  else if(!settings.autoPromoteEnabled)state="Automatic promotion paused";
+  return{rowNumber:i+2,name,city,address:v(r,h,"Address"),industry:v(r,h,"Industry"),phone:v(r,h,"Phone Number"),website:v(r,h,"Website URL"),email:v(r,h,"Public Email"),score,reviewStatus:review||"Needs Review",status:state,notes:v(r,h,"Notes"),source:v(r,h,"Source"),possibleDuplicate:possible};
+ }).filter(x=>x.name);
+ const summary={
+  eligible:all.filter(x=>x.status==="Eligible for next check").length,
+  promoted:all.filter(x=>x.status==="Promoted to Prospects").length,
+  review:all.filter(x=>/Manual|Missing|Below/.test(x.status)).length
+ };
+ const filtered=all.filter(x=>!q||fields.some(k=>{
+  const value=k==="City (OH)"||k==="City"?x.city:(k==="Review Status"?x.reviewStatus:k==="Notes"?x.notes:x[k==="Business Name"?"name":k==="Industry"?"industry":k==="Address"?"address":k==="Phone Number"?"phone":k==="Website URL"?"website":k==="Public Email"?"email":""]);
+  return String(value||"").toLowerCase().includes(q);
+ }));
+ size=Math.max(10,Math.min(100,Number(size)||25));const pages=Math.max(1,Math.ceil(filtered.length/size));page=Math.max(1,Math.min(pages,Number(page)||1));
+ return{ok:true,total:filtered.length,page,pages,pageSize:size,settings,summary,rows:filtered.slice((page-1)*size,page*size)};
 }
 export async function leads(env,query,page,size){
  const rows=await readTab(env,"Prospects");if(!rows.length)return{ok:true,rows:[],total:0,page:1,pages:1};
