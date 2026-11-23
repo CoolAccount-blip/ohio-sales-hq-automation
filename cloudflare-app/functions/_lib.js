@@ -42,7 +42,7 @@ export async function createSessionCookie(env) {
   const payload = b64url(new TextEncoder().encode(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS })));
   const signature = b64url(await hmac(payload, env.SESSION_SECRET));
   return COOKIE_NAME + "=" + payload + "." + signature +
-    "; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=" + SESSION_SECONDS;
+    "; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=" + SESSION_SECONDS;
 }
 
 export async function isAuthenticated(request, env) {
