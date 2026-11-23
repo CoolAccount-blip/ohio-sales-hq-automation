@@ -36,4 +36,11 @@ The website-email crawler should remain in Python on GitHub Actions for now. It 
 
 The dashboard stores research settings in the `App Settings` sheet. The updated `apps_script_receiver.gs` reads those values when the existing GitHub Actions worker asks for its next email queue, so the current crawler follows the website's run frequency, batch size, pages-per-site, retry window, and enabled/paused preference. After updating the receiver source in the bound Apps Script project, deploy a new Web App version for this settings sync to take effect. Keep the existing GitHub Actions schedule and webhook secrets unchanged.
 
+### Full website-queue scan
+- `email_enricher.py` supports `--drain-queue`, which repeatedly requests 100-site batches until the Apps Script queue reports no more currently eligible websites.
+- Drain mode uses the same existing candidate filters: it skips rows with a valid public email, rows with no official website URL, duplicate/possible-duplicate rows, excluded national chains, and records already marked checked. It does not bypass the configured retry interval for temporary failures.
+- Drain mode requires the updated `apps_script_receiver.gs` in the bound Apps Script project because its authenticated webhook adds a `force` flag that bypasses only the normal run-frequency wait. Replace the existing receiver file contents (do not add a second copy), save, then deploy a new version of the existing Web App while keeping the same URL and `WEBHOOK_SECRET`.
+- The scheduled and manual GitHub Actions email workflows now use drain mode, with a 100-website batch size, up to 100 batches per run, and a six-hour job ceiling. If the safety/time ceiling is reached, the next run resumes from the remaining eligible queue. Temporary failures stay marked for retry; websites blocking the crawler, publishing no email, or having no listed URL cannot be guaranteed to yield an email.
+- This research workflow only reads businesses' own public websites and saves published email addresses. It never sends outreach messages.
+
 The Gmail batch sender and reply tracker remain separate legacy Apps Script features. The Cloudflare app's prospect detail view opens a Gmail compose window with the saved address, subject, and body; the user reviews and clicks Send in Gmail. Live batch sending from the web app is not enabled.
