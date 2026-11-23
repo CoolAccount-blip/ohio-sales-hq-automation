@@ -448,8 +448,36 @@ def main():
     parser.add_argument("--webhook-url", required=True)
     parser.add_argument("--webhook-secret", default="")
     parser.add_argument("--max-records", type=int, default=MAX_RECORDS_PER_RUN)
+    parser.add_argument(
+        "--drain-queue",
+        action="store_true",
+        help="Keep requesting batches until no more currently eligible websites remain.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=MAX_RECORDS_PER_RUN,
+        help="Sites per batch in drain mode (hard-capped at 100).",
+    )
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=100,
+        help="Safety ceiling for one workflow run; the next run can resume from the remaining queue.",
+    )
+    parser.add_argument(
+        "--batch-delay",
+        type=float,
+        default=2.0,
+        help="Pause between batches to reduce load on Apps Script and Google Sheets.",
+    )
     args = parser.parse_args()
-    limit = max(1, min(args.max_records, MAX_RECORDS_PER_RUN))
+
+    requested_limit = args.batch_size if args.drain_queue else args.max_records
+    limit = max(1, min(requested_limit, MAX_RECORDS_PER_RUN))
+    max_batches = max(1, min(int(args.max_batches), 100))
+    batch_delay = max(0.0, min(float(args.batch_delay), 30.0))
+
     secret = args.webhook_secret
     if not secret:
         import os
@@ -457,46 +485,122 @@ def main():
     if not secret:
         raise SystemExit("Missing webhook secret")
 
-    queue = post_json(args.webhook_url, secret, {"action": "get_email_queue", "limit": limit})
-    if queue.get("enabled") is False:
-        print("Email research is paused in the Command Center. No websites were processed.")
-        return
-    if queue.get("scheduled") is False and queue.get("reason") == "not_due":
-        print("Email research interval has not elapsed. No websites were processed.")
-        return
-    settings = queue.get("settings") or {}
-    global MAX_PAGES_PER_SITE
-    MAX_PAGES_PER_SITE = max(3, min(8, int(settings.get("pagesPerSite", MAX_PAGES_PER_SITE))))
-    records = queue.get("records", [])
-    print(f"Email research queue: {len(records)} website(s) (configured limit {queue.get('batch_size', limit)}, pages/site {MAX_PAGES_PER_SITE})")
-    results = []
-    counts = {"found": 0, "no_public_email": 0, "retry": 0, "skipped": 0}
-    for i, record in enumerate(records, start=1):
-        print(f"[{i}/{len(records)}] Researching queued business website.")
-        result = research_site(record)
-        results.append(result)
-        if result.get("email"):
-            counts["found"] += 1
-            print("  Found a published contact email.")
-        elif str(result.get("status", "")).startswith("Checked"):
-            counts["no_public_email"] += 1
-            print("  Checked — no public email found")
-        elif str(result.get("status", "")).startswith("Retry"):
-            counts["retry"] += 1
-            print("  Retry — website research error")
-        else:
-            counts["skipped"] += 1
-            print(f"  {result.get('status', 'Skipped')}")
-    if results:
-        saved = post_json(args.webhook_url, secret, {"action": "save_email_results", "results": results})
-        counts["saved"] = int(saved.get("updated", 0))
+    totals = {
+        "checked": 0,
+        "found": 0,
+        "no_public_email": 0,
+        "retry": 0,
+        "skipped": 0,
+        "saved": 0,
+        "batches": 0,
+    }
+    stop_reason = "single batch completed"
+
+    for batch_number in range(1, max_batches + 1):
+        queue_payload = {
+            "action": "get_email_queue",
+            "limit": limit,
+        }
+        if args.drain_queue:
+            # This flag is honored only by the updated, secret-protected Apps
+            # Script receiver. It bypasses the run interval, not any exclusions
+            # or retry delay.
+            queue_payload["force"] = True
+
+        queue = post_json(args.webhook_url, secret, queue_payload)
+        if queue.get("enabled") is False:
+            stop_reason = "research is paused in App Settings"
+            print("Email research is paused. No websites were processed.")
+            break
+        if queue.get("scheduled") is False:
+            reason = queue.get("reason", "not_due")
+            if args.drain_queue and reason == "not_due":
+                raise RuntimeError(
+                    "The Apps Script receiver does not yet support queue-drain mode. "
+                    "Deploy the latest apps_script_receiver.gs Web App version, then rerun this workflow."
+                )
+            stop_reason = f"queue stopped: {reason}"
+            print(f"Email research stopped: {reason}.")
+            break
+
+        records = queue.get("records", [])
+        if not records:
+            stop_reason = "no more currently eligible websites"
+            print("No more currently eligible websites. Queue drain complete for this pass.")
+            break
+
+        totals["batches"] += 1
+        totals["checked"] += len(records)
+        settings = queue.get("settings") or {}
+        global MAX_PAGES_PER_SITE
+        MAX_PAGES_PER_SITE = max(
+            3, min(8, int(settings.get("pagesPerSite", MAX_PAGES_PER_SITE)))
+        )
+        print(
+            f"Batch {batch_number}/{max_batches}: researching {len(records)} website(s) "
+            f"(pages/site {MAX_PAGES_PER_SITE}, drain={args.drain_queue})."
+        )
+
+        results = []
+        batch_counts = {"found": 0, "no_public_email": 0, "retry": 0, "skipped": 0}
+        for i, record in enumerate(records, start=1):
+            print(f"[Batch {batch_number} · {i}/{len(records)}] Researching business website.")
+            result = research_site(record)
+            results.append(result)
+            if result.get("email"):
+                batch_counts["found"] += 1
+                print("  Found a published contact email.")
+            elif str(result.get("status", "")).startswith("Checked"):
+                batch_counts["no_public_email"] += 1
+                print("  Checked — no public email found.")
+            elif str(result.get("status", "")).startswith("Retry"):
+                batch_counts["retry"] += 1
+                print("  Retry later — website research error.")
+            else:
+                batch_counts["skipped"] += 1
+                print(f"  {result.get('status', 'Skipped')}")
+
+        saved = post_json(
+            args.webhook_url,
+            secret,
+            {"action": "save_email_results", "results": results},
+        )
+        batch_counts["saved"] = int(saved.get("updated", 0))
+        for key in batch_counts:
+            totals[key] += batch_counts[key]
         print(
             "Batch summary: "
-            f"found={counts['found']}, no_public_email={counts['no_public_email']}, "
-            f"retry={counts['retry']}, skipped={counts['skipped']}, saved={counts['saved']}"
+            f"checked={len(records)}, found={batch_counts['found']}, "
+            f"no_public_email={batch_counts['no_public_email']}, "
+            f"retry={batch_counts['retry']}, skipped={batch_counts['skipped']}, "
+            f"saved={batch_counts['saved']}."
         )
+
+        if not args.drain_queue:
+            stop_reason = "single batch completed"
+            break
+        if batch_counts["saved"] < 1:
+            stop_reason = "no results were saved; stopped to avoid repeating the same queue"
+            print("No rows were saved. Stopping to avoid looping on the same websites.")
+            break
+        if batch_number < max_batches and batch_delay:
+            time.sleep(batch_delay)
     else:
-        print("No pending website email research. Nothing to update.")
+        stop_reason = f"safety ceiling reached ({max_batches} batches)"
+
+    print(
+        "FULL RUN SUMMARY: "
+        f"batches={totals['batches']}, checked={totals['checked']}, "
+        f"found={totals['found']}, no_public_email={totals['no_public_email']}, "
+        f"retry={totals['retry']}, skipped={totals['skipped']}, "
+        f"saved={totals['saved']}."
+    )
+    print(f"Stopped because: {stop_reason}.")
+    if args.drain_queue and totals["batches"] >= max_batches:
+        print(
+            "The per-run safety ceiling was reached. Start the workflow again to "
+            "continue from the remaining pending records."
+        )
 
 
 if __name__ == "__main__":
