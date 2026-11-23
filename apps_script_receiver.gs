@@ -989,7 +989,10 @@ function ohioCfAppSaveCall_(request) {
   var outcomeCol = col('Call Outcome');
   var notesCol = col('Call Notes');
   var followCol = col('Follow-up Date');
-  var allowed = OHIO_CALL_QUEUE.OUTCOMES;
+  var allowed = (typeof OHIO_CALL_QUEUE !== 'undefined' && OHIO_CALL_QUEUE.OUTCOMES) ? OHIO_CALL_QUEUE.OUTCOMES : [
+    'Ready to Call', 'No Answer', 'Left Voicemail', 'Spoke — Follow Up',
+    'Interested', 'Not Interested', 'Wrong Number', 'Do Not Call', 'Completed'
+  ];
   var outcome = String(request.outcome || 'Ready to Call');
   if (allowed.indexOf(outcome) < 0) throw new Error('Choose a valid call outcome.');
   if (outcomeCol) sh.getRange(rowNumber, outcomeCol).setValue(outcome);
