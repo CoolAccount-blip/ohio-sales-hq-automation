@@ -53,7 +53,7 @@ function callSelectedOhioLeadOnMac() {
   }
 
   const phone = String(sh.getRange(row, 3).getDisplayValue() || '').trim();
-  const digits = phone.replace(/\\D/g, '');
+  const digits = phone.replace(/\D/g, '');
   if (digits.length < 7) {
     ui.alert('This row does not contain a usable phone number.');
     return;
