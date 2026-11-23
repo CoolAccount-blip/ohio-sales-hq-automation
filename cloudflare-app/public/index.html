@@ -117,7 +117,7 @@ const $=id=>document.getElementById(id);
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function notify(message){const t=$("toast");t.textContent=message;t.classList.remove("hidden");clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.classList.add("hidden"),3600)}
 async function api(url,options={}){
-  const response=await fetch(url,{credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
+  const response=await fetch(url,{...options,credentials:"include",headers:{"Content-Type":"application/json",...(options.headers||{})}});
   let data;try{data=await response.json()}catch{throw new Error("The server returned an unexpected response.")}
   if(response.status===401){showAuth();throw new Error("Please sign in again.")}
   if(!response.ok||data.ok===false)throw new Error(data.error||"Something went wrong.");
@@ -130,7 +130,7 @@ async function start(){
 }
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("loginButton").disabled=true;$("authError").textContent="Signing in…";
- try{await api("/api/login",{method:"POST",body:JSON.stringify({password:$("password").value})});$("password").value="";$("auth").classList.add("hidden");$("application").classList.remove("hidden");applyAppearance();await refreshDashboard()}
+ try{await api("/api/login",{method:"POST",body:JSON.stringify({password:$("password").value})});const session=await api("/api/session");if(!session.authenticated)throw new Error("Your password was accepted, but the browser did not keep the sign-in cookie. Allow cookies for this site and try again.");$("password").value="";$("auth").classList.add("hidden");$("application").classList.remove("hidden");applyAppearance();await refreshDashboard()}
  catch(err){$("authError").textContent=err.message}
  finally{$("loginButton").disabled=false}
 });
