@@ -383,17 +383,64 @@ def research_site(record: dict) -> dict:
 
 
 def post_json(url: str, token: str, body: dict) -> dict:
+    """POST to Apps Script with bounded retries for transient lock/network errors.
+
+    The webhook uses a project-wide Apps Script lock. Scheduled tasks can briefly
+    contend for it, so a temporary "another task is running" response should be
+    retried rather than failing the entire email-research batch.
+    """
     from urllib.request import Request, urlopen
+
     payload = dict(body)
     payload["token"] = token
     data = json.dumps(payload).encode("utf-8")
-    req = Request(url, data=data, headers={"Content-Type": "application/json", "User-Agent": USER_AGENT}, method="POST")
-    with urlopen(req, timeout=90) as response:
-        raw = response.read().decode("utf-8", errors="replace")
-        result = json.loads(raw)
-        if response.status >= 300 or not result.get("ok"):
-            raise RuntimeError(f"Apps Script request failed: {raw[:600]}")
-        return result
+    max_attempts = 6
+    retryable_statuses = {408, 425, 429, 500, 502, 503, 504}
+
+    for attempt in range(max_attempts):
+        req = Request(
+            url,
+            data=data,
+            headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
+            method="POST",
+        )
+        try:
+            with urlopen(req, timeout=90) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+                result = json.loads(raw)
+                if response.status < 300 and result.get("ok"):
+                    return result
+                message = str(result.get("error") or raw[:600])
+                transient_lock = "another automation task is running" in message.lower()
+                if not transient_lock and response.status not in retryable_statuses:
+                    raise RuntimeError(f"Apps Script request failed: {message[:600]}")
+                last_error = message
+        except HTTPError as exc:
+            raw = exc.read().decode("utf-8", errors="replace")
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                parsed = {}
+            message = str(parsed.get("error") or raw or exc)
+            transient_lock = "another automation task is running" in message.lower()
+            if exc.code not in retryable_statuses and not transient_lock:
+                raise RuntimeError(f"Apps Script request failed ({exc.code}): {message[:600]}") from exc
+            last_error = message
+        except (URLError, TimeoutError, OSError) as exc:
+            last_error = str(exc)
+
+        if attempt + 1 >= max_attempts:
+            raise RuntimeError(
+                f"Apps Script request failed after {max_attempts} attempts: {last_error[:600]}"
+            )
+        delay = min(30, 3 * (2 ** attempt))
+        print(
+            f"Apps Script is temporarily busy or unreachable; retrying in {delay}s "
+            f"(attempt {attempt + 2}/{max_attempts})."
+        )
+        time.sleep(delay)
+
+    raise RuntimeError("Apps Script request failed unexpectedly.")
 
 
 def main():
