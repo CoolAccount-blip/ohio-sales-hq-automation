@@ -53,14 +53,33 @@ export async function dashboard(env){
 }
 export async function leads(env,query,page,size){
  const rows=await readTab(env,"Prospects");if(!rows.length)return{ok:true,rows:[],total:0,page:1,pages:1};
- const h=rows[0],q=String(query||"").trim().toLowerCase(),fields=["Business Name","Public Email","Phone Number","Industry","City (OH)","City","Sales Status","Lead Score"];
- const a=rows.slice(1).filter(r=>v(r,h,"Business Name")&&(!q||fields.some(k=>v(r,h,k).toLowerCase().includes(q))));
- size=Math.max(10,Math.min(100,Number(size)||25));const pages=Math.max(1,Math.ceil(a.length/size));page=Math.max(1,Math.min(pages,Number(page)||1));const city=ix(h,"City (OH)")>=0?"City (OH)":"City";
- return{ok:true,total:a.length,page,pages,rows:a.slice((page-1)*size,page*size).map(r=>({name:v(r,h,"Business Name"),email:v(r,h,"Public Email"),phone:v(r,h,"Phone Number"),industry:v(r,h,"Industry"),city:v(r,h,city),status:v(r,h,"Sales Status"),score:v(r,h,"Lead Score"),website:v(r,h,"Website URL")}))};
+ const h=rows[0],q=String(query||"").trim().toLowerCase();
+ const fields=["Business Name","Public Email","Phone Number","Industry","City (OH)","City","Sales Status","Lead Score (0-100)","Lead Score","Website URL","Address"];
+ const records=rows.slice(1).map((r,i)=>({r,rowNumber:i+2})).filter(x=>v(x.r,h,"Business Name")&&(!q||fields.some(k=>v(x.r,h,k).toLowerCase().includes(q))));
+ size=Math.max(10,Math.min(100,Number(size)||25));const pages=Math.max(1,Math.ceil(records.length/size));page=Math.max(1,Math.min(pages,Number(page)||1));
+ const city=ix(h,"City (OH)")>=0?"City (OH)":"City";
+ const get=(r,...names)=>{for(const name of names){const value=v(r,h,name);if(value)return value;}return "";};
+ return{ok:true,total:records.length,page,pages,pageSize:size,rows:records.slice((page-1)*size,page*size).map(({r,rowNumber})=>({
+  rowNumber,name:get(r,"Business Name"),email:get(r,"Public Email"),phone:get(r,"Phone Number"),industry:get(r,"Industry"),city:get(r,city),address:get(r,"Address"),
+  status:get(r,"Sales Status"),score:get(r,"Lead Score (0-100)","Lead Score"),website:get(r,"Website URL"),
+  hasWebsite:get(r,"Has Website (Yes/No)"),mobileFriendly:get(r,"Mobile Friendly (Yes/No/N/A)"),rating:get(r,"Google Rating"),
+  reviewCount:get(r,"Review Count"),unansweredReviews:get(r,"Unanswered Reviews"),recentActivity:get(r,"Recent Activity (Active/Stale)"),
+  contactPage:get(r,"Contact Page (Yes/No)"),recommendedService:get(r,"Recommended Service"),qualificationReason:get(r,"Why It Qualifies"),
+  subject:get(r,"Personalized Subject Line"),emailDraft:get(r,"Personalized Email Draft"),dateAdded:get(r,"Date Added"),lastContacted:get(r,"Last Contacted"),notes:get(r,"Notes"),
+  emailResearchStatus:get(r,"Email Research Status"),emailResearchNotes:get(r,"Email Research Notes"),emailSourceUrl:get(r,"Email Source URL"),
+  emailType:get(r,"Email Type"),emailConfidence:get(r,"Email Confidence"),autoQualificationStatus:get(r,"Auto Qualification Status"),autoQualificationReason:get(r,"Auto Qualification Reason")
+ }))};
 }
 export async function calls(env,query){
  const rows=await readTab(env,"Call Queue").catch(()=>[]);if(!rows.length)return{ok:true,rows:[],total:0};
- const h=rows[0],q=String(query||"").trim().toLowerCase(),a=rows.slice(1).map((r,i)=>({rowNumber:i+2,name:v(r,h,"Business Name"),phone:v(r,h,"Phone"),city:v(r,h,"City"),industry:v(r,h,"Industry"),score:v(r,h,"Likelihood Score (0-100)"),outcome:v(r,h,"Call Outcome"),notes:v(r,h,"Call Notes"),followUp:v(r,h,"Follow-up Date"),leadKey:v(r,h,"Lead Key")})).filter(x=>x.name&&(!q||[x.name,x.phone,x.city,x.industry,x.outcome].some(t=>t.toLowerCase().includes(q)))).slice(0,150);
+ const h=rows[0],q=String(query||"").trim().toLowerCase();
+ const a=rows.slice(1).map((r,i)=>({
+  rowNumber:i+2,name:v(r,h,"Business Name"),phone:v(r,h,"Phone"),city:v(r,h,"City"),address:v(r,h,"Address"),
+  industry:v(r,h,"Industry"),score:v(r,h,"Likelihood Score (0-100)"),overview:v(r,h,"Company Overview / Research Notes"),
+  website:v(r,h,"Website"),script:v(r,h,"Suggested Call Script"),outcome:v(r,h,"Call Outcome"),notes:v(r,h,"Call Notes"),
+  followUp:v(r,h,"Follow-up Date"),leadKey:v(r,h,"Lead Key"),sourceSheet:v(r,h,"Source Sheet"),sourceRow:v(r,h,"Source Row"),
+  whyRanksHere:v(r,h,"Why This Lead Ranks Here")
+ })).filter(x=>x.name&&(!q||[x.name,x.phone,x.city,x.industry,x.outcome,x.address].some(t=>String(t||"").toLowerCase().includes(q)))).slice(0,250);
  return{ok:true,rows:a,total:a.length};
 }
 export async function saveCall(env,x){
@@ -95,9 +114,12 @@ export async function refreshCalls(env){
   if(/do not contact|closed deal/i.test(v(r,h,"Sales Status")))return;
   const digits=String(phone).replace(/\D/g,""),key=norm(name)+"|"+(digits||norm(address||city));if(seen.has(key))return;seen.add(key);
   const prior=old.get(key)||[],industry=v(r,h,"Industry")||v(r,h,"Business Type")||v(r,h,"Category"),website=v(r,h,"Website URL"),rating=rank(r,h);
-  const notes=[v(r,h,"Notes"),v(r,h,"QC Note"),v(r,h,"Email Research Notes"),v(r,h,"Lead Score")?"Lead score: "+v(r,h,"Lead Score"):""].filter(Boolean).join(" | ");
-  const script="Hi, is this "+name+"?\n\nMy name is Sam. I’m reaching out because I’m learning how independent "+(industry||"local service")+" businesses"+(city?" in "+city:" in the area")+" manage their online reviews and customer feedback. Did I catch the right person to ask about that?\n\nI’m working on a straightforward service that helps local businesses request customer reviews and stay on top of responses. How do you currently handle that process? Would you be open to a quick follow-up conversation?";
-  out.push([rating.s,name,phone,"",city,address,industry,name+(industry?" is listed as a "+industry.toLowerCase():" is listed as a local business")+(city?" in "+city:"")+". "+notes,website,script,v(prior,oldH,"Call Outcome")||"Ready to Call",v(prior,oldH,"Call Notes"),v(prior,oldH,"Follow-up Date"),sheet,i+2,key,rating.why+". Fit estimate, not a prediction of acceptance."]);
+  const sourceLeadScore=v(r,h,"Lead Score (0-100)")||v(r,h,"Lead Score");const notes=[v(r,h,"Notes"),v(r,h,"QC Note"),v(r,h,"Email Research Notes"),sourceLeadScore?"Lead score: "+sourceLeadScore:""].filter(Boolean).join(" | ");
+  const category=industry?industry.toLowerCase():"local service",place=city?" in "+city:" in the area";
+   const script="Hi, is this "+name+"?\n\nMy name is Sam. I’m reaching out because I’m learning how independent "+category+" businesses"+place+" manage their online reviews and customer feedback. Did I catch the right person to ask about that?\n\nI’m working on a straightforward service that helps local businesses make it easier to request customer reviews and stay on top of responses. I wanted to ask how you currently handle that process.\n\nA few quick questions:\n• Do you have a process for asking customers to leave a Google review after a job or visit?\n• Is that handled manually, or does your current software help with it?\n• Who usually responds when a new review comes in?\n• Is getting more consistent reviews or keeping up with responses something you’re actively trying to improve?\n\nIf it sounds relevant: Would you be open to a quick follow-up conversation so I can show you what I’m building and get your feedback?\n\nIf they are busy: No problem at all. Is there a better time to call back, or is there a preferred way to reach the person who handles this?";
+   if(website)script+="\n\nBefore calling, take a quick look at the company website so you can reference one specific service they offer.";
+  const overview=name+(industry?" is listed as a "+industry.toLowerCase():" is listed as a local business")+(city?" in "+city:"")+". "+(address?"Listed address: "+address+". ":"")+(website?"Website is available for a quick review before calling. ":"")+(notes?"Additional listing / research details: "+notes+" ":"")+"No usable public email was found in the current prospect record, so this lead is routed here for a phone-first contact attempt.";
+   out.push([rating.s,name,phone,"",city,address,industry,overview,website,script,v(prior,oldH,"Call Outcome")||"Ready to Call",v(prior,oldH,"Call Notes"),v(prior,oldH,"Follow-up Date"),sheet,i+2,key,rating.why+". Fit estimate, not a prediction of acceptance."]);
  })});
  out.sort((a,b)=>{const ca=/^(interested|not interested|wrong number|do not call|completed)$/i.test(a[10]),cb=/^(interested|not interested|wrong number|do not call|completed)$/i.test(b[10]);return ca!==cb?(ca?1:-1):b[0]-a[0]});
  await ensureTab(env,"Call Queue",heads);await clear(env,qtab("Call Queue")+"!A2:Q"+Math.max(2,current.length));if(out.length)await write(env,qtab("Call Queue")+"!A2:Q"+(out.length+1),out);
