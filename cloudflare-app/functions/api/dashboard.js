@@ -1,5 +1,7 @@
-import { json, requireAuth, callAppsScript } from "../_lib.js";
+import { json, requireAuth } from "../_lib.js";
+import { dashboard } from "../_google.js";
 export async function onRequestGet({ request, env }) {
   const denied = await requireAuth(request, env); if (denied) return denied;
-  return callAppsScript(env, "app_dashboard");
+  try { return json(await dashboard(env)); }
+  catch (e) { return json({ok:false,error:e.message||String(e)}, 502); }
 }
