@@ -45,3 +45,19 @@ jobs:
 
       - name: Test Command Center sidebar JavaScript
         run: python tests_test_command_center_html.py
+ 
+      - name: Syntax-check Cloudflare Functions and dashboard JavaScript
+        run: |
+          for file in cloudflare-app/functions/*.js $(find cloudflare-app/functions/api -name '*.js'); do
+            node --check --input-type=module < "$file"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("cloudflare-app/public/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script(?:\\s[^>]*)?>([\\s\\S]*?)</script>", html, flags=re.I)
+          if not scripts:
+              raise SystemExit("No inline dashboard script found")
+          Path("/tmp/ohio-sales-hq-inline.js").write_text("\\n".join(scripts), encoding="utf-8")
+          PY
+          node --check /tmp/ohio-sales-hq-inline.js
