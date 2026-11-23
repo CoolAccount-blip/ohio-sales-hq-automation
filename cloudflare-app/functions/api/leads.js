@@ -1,10 +1,8 @@
-import { json, requireAuth, callAppsScript } from "../_lib.js";
+import { json, requireAuth } from "../_lib.js";
+import { leads } from "../_google.js";
 export async function onRequestGet({ request, env }) {
   const denied = await requireAuth(request, env); if (denied) return denied;
   const u = new URL(request.url);
-  return callAppsScript(env, "app_leads", {
-    query: u.searchParams.get("q") || "",
-    page: Number(u.searchParams.get("page") || 1),
-    pageSize: Number(u.searchParams.get("pageSize") || 25)
-  });
+  try { return json(await leads(env,u.searchParams.get("q")||"",Number(u.searchParams.get("page")||1),Number(u.searchParams.get("pageSize")||25))); }
+  catch (e) { return json({ok:false,error:e.message||String(e)}, 502); }
 }
