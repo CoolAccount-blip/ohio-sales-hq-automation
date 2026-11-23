@@ -35,7 +35,7 @@ async function ensureTab(env,name,headers){
 }
 export async function getSettings(env){
  let rows=[];try{rows=await readTab(env,"App Settings")}catch{}
- const s={enabled:true,runsPerDay:2,batchSize:30,pagesPerSite:5,retryHours:24,autoPromoteEnabled:true,promotionMinScore:70};
+ const s={enabled:true,runsPerDay:4,batchSize:50,pagesPerSite:5,retryHours:24,autoPromoteEnabled:true,promotionMinScore:70};
  rows.slice(1).forEach(r=>{
   const k=String(r[0]||"").trim(),value=String(r[1]||"").trim();
   if(k==="enabled")s.enabled=value.toLowerCase()!=="false";
@@ -63,7 +63,7 @@ function discoveryCompleteness_(r,h){
  if(v(r,h,"Business Name").length>=2)score+=10;
  if(v(r,h,"City (OH)")||v(r,h,"City"))score+=10;
  if(v(r,h,"Address"))score+=15;
- if(String(v(r,h,"Phone Number")).replace(/\\D/g,"").length>=7)score+=10;
+ if(String(v(r,h,"Phone Number")).replace(/\D/g,"").length>=7)score+=10;
  if(v(r,h,"Website URL"))score+=10;
  if(realEmail(v(r,h,"Public Email")))score+=15;
  if(v(r,h,"OSM IDs")||(v(r,h,"Latitude")&&v(r,h,"Longitude")))score+=5;
