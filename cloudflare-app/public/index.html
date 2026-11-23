@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f7f9">
+<title>Ohio Sales HQ</title>
+<style>
+:root{--bg:#f5f7f9;--panel:#fff;--panel2:#fafbfc;--ink:#17212b;--muted:#78838d;--line:#e8edf0;--accent:#147d68;--accent2:#e6f4f0;--gold:#a87528;--goldbg:#fff6e8;--red:#b54e4e;--shadow:0 8px 30px rgba(24,45,55,.045)}
+[data-theme=dark]{--bg:#111a1d;--panel:#1a2629;--panel2:#202e31;--ink:#edf4f2;--muted:#9aa9a6;--line:#2d3c3f;--accent:#64c6a8;--accent2:#243d37;--gold:#e4b96f;--goldbg:#3b3223;--red:#ef9292;--shadow:0 8px 30px rgba(0,0,0,.18)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:236px minmax(0,1fr)}.sidebar{background:var(--panel);border-right:1px solid var(--line);padding:25px 16px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:2px 10px 31px}.brandmark{width:34px;height:34px;border-radius:11px;background:#173a37;color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}.brandname{font-weight:800;letter-spacing:.45px;font-size:12px}.navlabel{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1.25px;padding:9px 12px}.nav{display:grid;gap:4px}.nav button{border:0;background:transparent;color:var(--muted);text-align:left;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:650}.nav button:hover{background:var(--panel2);color:var(--ink)}.nav button.active{background:var(--accent2);color:var(--accent)}.navicon{width:18px;text-align:center;font-size:16px}.sidefoot{margin-top:auto;padding:14px 10px 2px;color:var(--muted);font-size:11px;border-top:1px solid var(--line)}
+main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:27px}.eyebrow{font-size:10px;font-weight:800;letter-spacing:1.35px;text-transform:uppercase;color:var(--muted)}h1{margin:5px 0 4px;font-size:27px;line-height:1.2;letter-spacing:-.8px}.subtitle{color:var(--muted);font-size:13px}.topright{display:flex;align-items:center;gap:10px}.connected{border:1px solid var(--line);border-radius:30px;padding:7px 11px;background:var(--panel);font-size:11px;color:var(--muted)}.avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--accent2);color:var(--accent);font-weight:800}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:17px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow)}.metriclabel{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px;font-weight:650}.metricicon{width:30px;height:30px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;color:var(--accent);font-size:15px}.metricnumber{font-size:29px;font-weight:800;letter-spacing:-1.2px;margin:10px 0 0}.metriccaption{font-size:11px;color:var(--muted)}
+.contentgrid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.8fr);gap:15px}.sectiontitle{font-size:14px;font-weight:800;margin:0 0 4px}.sectiondesc{font-size:12px;color:var(--muted);margin-bottom:15px}.action{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line);cursor:pointer}.action:first-of-type{border-top:0}.actionicon{height:35px;width:35px;border-radius:10px;background:var(--accent2);color:var(--accent);display:grid;place-items:center;flex:none}.actioncopy{flex:1}.actionname{font-size:13px;font-weight:750}.actionsub{font-size:11px;color:var(--muted)}.arrow{color:var(--muted)}.statusrow{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:12px}.statusrow:first-of-type{border-top:0}.statusvalue{font-weight:700}.dot{display:inline-block;height:7px;width:7px;border-radius:50%;background:var(--accent);margin-right:7px}
+.toolbar{display:flex;align-items:center;gap:10px;margin:16px 0}.search{width:min(100%,430px);padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);outline:none}.search:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent2)}.spacer{flex:1}.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:750;font-size:12px}.btn:hover{filter:brightness(.96)}.btn.secondary{background:var(--accent2);color:var(--accent)}.btn.ghost{background:var(--panel);color:var(--muted);border:1px solid var(--line)}.btn:disabled{opacity:.55;cursor:wait}
+.tablebox{overflow:auto;border:1px solid var(--line);border-radius:13px;background:var(--panel)}table{width:100%;border-collapse:collapse;min-width:730px}th{text-align:left;padding:12px 14px;color:var(--muted);font-size:10px;letter-spacing:.8px;text-transform:uppercase;background:var(--panel2);font-weight:800}td{padding:13px 14px;border-top:1px solid var(--line);font-size:12px;vertical-align:middle}td strong{font-size:12px}.smallmuted{font-size:11px;color:var(--muted);margin-top:2px}.tag{background:var(--accent2);color:var(--accent);font-weight:750;font-size:10px;border-radius:20px;padding:4px 8px;white-space:nowrap}.tag.pending{background:var(--goldbg);color:var(--gold)}.phone{color:var(--accent);font-weight:750;text-decoration:none}.phone:hover{text-decoration:underline}.pager{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px;padding-top:13px}.empty{padding:35px!important;text-align:center;color:var(--muted)}
+.settingsgrid{display:grid;grid-template-columns:minmax(0,720px);gap:15px}.fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field{margin:14px 0}.field label{display:block;font-size:12px;font-weight:750;margin-bottom:6px}.field select,.field input,.field textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink)}.field textarea{min-height:110px;resize:vertical}.toggleline{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.toggleline:first-of-type{border-top:0}.toggleline strong{font-size:12px}.toggleline small{display:block;color:var(--muted);font-size:11px}.switch{width:18px;height:18px;accent-color:var(--accent)}.hint{font-size:11px;color:var(--muted);margin-top:8px}.notice{font-size:12px;color:var(--muted);margin-top:12px}.toast{position:fixed;right:22px;bottom:22px;background:var(--ink);color:var(--panel);border-radius:10px;padding:12px 16px;font-size:12px;box-shadow:var(--shadow);max-width:min(420px,calc(100vw - 40px));z-index:30}.hidden{display:none!important}
+.authwrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--bg)}.authcard{width:min(410px,100%);padding:32px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.authlogo{display:flex;align-items:center;gap:10px;margin-bottom:25px}.authcard h1{font-size:24px}.authcard p{font-size:13px;color:var(--muted);margin-bottom:23px}.authcard input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);margin-bottom:12px}.authcard .btn{width:100%;padding:12px}.autherror{color:var(--red);font-size:12px;margin-top:10px;min-height:18px}
+.modalback{position:fixed;inset:0;background:rgba(12,25,29,.43);display:grid;place-items:center;padding:18px;z-index:20}.modal{width:min(480px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.2)}.modalhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.modalhead h2{font-size:18px;margin:0}.xbtn{border:0;background:var(--panel2);color:var(--muted);height:30px;width:30px;border-radius:8px}.modal .field{margin:12px 0}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.compact main{padding-top:22px}.compact .card{padding:14px}.compact td{padding:9px 12px}
+@media(max-width:920px){.app{grid-template-columns:72px minmax(0,1fr)}.sidebar{padding:20px 8px}.brand{justify-content:center;padding:0 0 24px}.brandname,.navlabel,.navtext,.sidefoot{display:none}.nav button{justify-content:center;padding:12px 4px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.contentgrid{grid-template-columns:1fr}}
+@media(max-width:600px){.app{display:block}.sidebar{position:sticky;top:0;z-index:10;display:block;padding:7px 8px;border-right:0;border-bottom:1px solid var(--line)}.brand{display:none}.nav{display:flex;justify-content:space-around}.nav button{padding:9px 11px}.navicon{font-size:17px}main{padding:22px 13px}.topbar{margin-bottom:18px}.connected{display:none}.metrics{gap:8px}.card{padding:13px}.metricnumber{font-size:24px}.fieldrow{grid-template-columns:1fr}.title{font-size:24px}.toolbar{flex-wrap:wrap}.search{max-width:none;flex:1}}
+</style>
+</head>
+<body>
+<div id="auth" class="authwrap hidden">
+  <form id="loginForm" class="authcard">
+    <div class="authlogo"><div class="brandmark">O</div><strong class="brandname">OHIO SALES HQ</strong></div>
+    <h1>Welcome back.</h1>
+    <p>Your prospecting workspace, all in one place.</p>
+    <input id="password" type="password" autocomplete="current-password" placeholder="App password" required>
+    <button class="btn" type="submit" id="loginButton">Sign in</button>
+    <div id="authError" class="autherror"></div>
+  </form>
+</div>
+<div id="application" class="app hidden">
+  <aside class="sidebar">
+    <div class="brand"><div class="brandmark">O</div><span class="brandname">OHIO SALES HQ</span></div>
+    <div class="navlabel">WORKSPACE</div>
+    <nav class="nav">
+      <button class="active" data-page="home" onclick="go('home')"><span class="navicon">⌂</span><span class="navtext">Overview</span></button>
+      <button data-page="leads" onclick="go('leads')"><span class="navicon">◉</span><span class="navtext">Prospects</span></button>
+      <button data-page="calls" onclick="go('calls')"><span class="navicon">↗</span><span class="navtext">Call queue</span></button>
+      <button data-page="settings" onclick="go('settings')"><span class="navicon">⚙</span><span class="navtext">Settings</span></button>
+    </nav>
+    <div class="sidefoot">Private workspace<br>Ohio Sales HQ</div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div><div class="eyebrow" id="eyebrow">WORKSPACE / OVERVIEW</div><h1 id="pageTitle">Overview</h1><div class="subtitle" id="pageSubtitle">A calm view of what needs your attention.</div></div>
+      <div class="topright"><span class="connected" id="connection">Connecting…</span><div class="avatar">S</div><button class="btn ghost" onclick="logout()">Sign out</button></div>
+    </header>
+    <section id="home">
+      <div class="metrics">
+        <div class="card"><div class="metriclabel">Prospects <span class="metricicon">◉</span></div><div class="metricnumber" id="mProspects">—</div><div class="metriccaption">Businesses in your prospect list</div></div>
+        <div class="card"><div class="metriclabel">New discoveries <span class="metricicon">⌕</span></div><div class="metricnumber" id="mInbox">—</div><div class="metriccaption">Businesses waiting for review</div></div>
+        <div class="card"><div class="metriclabel">Emails found <span class="metricicon">✉</span></div><div class="metricnumber" id="mFound">—</div><div class="metriccaption">Public business emails collected</div></div>
+        <div class="card"><div class="metriclabel">Call queue <span class="metricicon">☎</span></div><div class="metricnumber" id="mCalls">—</div><div class="metriccaption">Businesses in the call list</div></div>
+      </div>
+      <div class="contentgrid">
+        <div class="card"><h2 class="sectiontitle">Your next steps</h2><div class="sectiondesc">Pick up where you left off.</div>
+          <div class="action" onclick="go('leads')"><div class="actionicon">◉</div><div class="actioncopy"><div class="actionname">Review your prospects</div><div class="actionsub">Search the businesses and their contact details</div></div><span class="arrow">→</span></div>
+          <div class="action" onclick="go('calls')"><div class="actionicon">☎</div><div class="actioncopy"><div class="actionname">Make your next call</div><div class="actionsub">Call from your Mac and record the outcome here</div></div><span class="arrow">→</span></div>
+          <div class="action" onclick="go('settings')"><div class="actionicon">⚙</div><div class="actioncopy"><div class="actionname">Tune your workflow</div><div class="actionsub">Adjust how often email research runs</div></div><span class="arrow">→</span></div>
+        </div>
+        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Background website checks.</div>
+          <div class="statusrow"><span>Research status</span><strong class="statusvalue" id="researchState">—</strong></div>
+          <div class="statusrow"><span>Last started</span><span class="smallmuted" id="lastRun">—</span></div>
+          <div class="statusrow"><span>Last completed</span><span class="smallmuted" id="lastComplete">—</span></div>
+          <button class="btn secondary" style="margin-top:13px" onclick="go('settings')">Manage settings</button>
+        </div>
+      </div>
+    </section>
+    <section id="leads" class="hidden">
+      <div class="toolbar"><input id="leadSearch" class="search" placeholder="Search business, city, phone, email…" oninput="debouncedLeads()"><button class="btn secondary" onclick="loadLeads(1)">Refresh</button></div>
+      <div class="tablebox"><table><thead><tr><th>Business</th><th>Location</th><th>Industry</th><th>Public email</th><th>Phone</th><th>Lead score</th></tr></thead><tbody id="leadRows"><tr><td colspan="6" class="empty">Loading prospects…</td></tr></tbody></table></div>
+      <div class="pager"><span id="leadCount">—</span><span><button class="btn ghost" onclick="pageLeads(-1)">Previous</button> <button class="btn ghost" onclick="pageLeads(1)">Next</button></span></div>
+    </section>
+    <section id="calls" class="hidden">
+      <div class="toolbar"><input id="callSearch" class="search" placeholder="Search your call list…" oninput="loadCalls()"><div class="spacer"></div><button class="btn secondary" onclick="refreshCalls()">Refresh queue</button></div>
+      <div class="tablebox"><table><thead><tr><th>Business</th><th>Location</th><th>Phone</th><th>Fit score</th><th>Outcome</th><th></th></tr></thead><tbody id="callRows"><tr><td colspan="6" class="empty">Loading call queue…</td></tr></tbody></table></div>
+      <div class="notice">Click a phone number to open your Mac's configured calling app. Use Manage to save notes, outcomes and follow-up dates.</div>
+    </section>
+    <section id="settings" class="hidden">
+      <div class="settingsgrid">
+        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Control the public website email-finding worker. Changes apply to future runs.</div>
+          <div class="toggleline"><div><strong>Automatic research</strong><small>Pause or resume website checks</small></div><input id="enabled" class="switch" type="checkbox"></div>
+          <div class="fieldrow"><div class="field"><label for="runs">Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div><div class="field"><label for="batch">Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
+          <div class="fieldrow"><div class="field"><label for="pages">Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div><div class="field"><label for="retry">Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
+          <div class="hint" id="capacity">Daily capacity: —</div><div style="margin-top:17px"><button class="btn" onclick="saveSettings()">Save research settings</button></div>
+        </div>
+        <div class="card"><h2 class="sectiontitle">Appearance</h2><div class="sectiondesc">Adjust the workspace to your preference.</div>
+          <div class="field"><label for="theme">Color theme</label><select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></div>
+          <div class="toggleline"><div><strong>Compact layout</strong><small>Reduce spacing in cards and tables</small></div><input id="compact" class="switch" type="checkbox"></div>
+          <button class="btn secondary" onclick="saveAppearance()">Save appearance</button>
+        </div>
+      </div>
+    </section>
+    <div class="notice" id="pageMessage" aria-live="polite"></div>
+  </main>
+</div>
+<div id="callModal" class="modalback hidden" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modalhead"><div><h2 id="modalTitle">Update call</h2><div class="smallmuted" id="modalPhone"></div></div><button class="xbtn" onclick="closeCallModal()">✕</button></div>
+    <input id="modalKey" type="hidden">
+    <div class="field"><label for="modalOutcome">Call outcome</label><select id="modalOutcome"><option>Ready to Call</option><option>No Answer</option><option>Left Voicemail</option><option>Spoke — Follow Up</option><option>Interested</option><option>Not Interested</option><option>Wrong Number</option><option>Do Not Call</option><option>Completed</option></select></div>
+    <div class="field"><label for="modalNotes">Call notes</label><textarea id="modalNotes" placeholder="What happened on the call?"></textarea></div>
+    <div class="field"><label for="modalFollow">Follow-up date</label><input id="modalFollow" type="date"></div>
+    <div class="modalactions"><button class="btn ghost" onclick="closeCallModal()">Cancel</button><button class="btn" id="saveCallButton" onclick="saveCall()">Save outcome</button></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script>
+let page="home", leadPage=1, leadPages=1, leadTimer=null, callRows=[];
+const $=id=>document.getElementById(id);
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function notify(message){const t=$("toast");t.textContent=message;t.classList.remove("hidden");clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.classList.add("hidden"),3600)}
+async function api(url,options={}){
+  const response=await fetch(url,{credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
+  let data;try{data=await response.json()}catch{throw new Error("The server returned an unexpected response.")}
+  if(response.status===401){showAuth();throw new Error("Please sign in again.")}
+  if(!response.ok||data.ok===false)throw new Error(data.error||"Something went wrong.");
+  return data;
+}
+function showAuth(){$("application").classList.add("hidden");$("auth").classList.remove("hidden");$("password").focus()}
+async function start(){
+ try{const s=await api("/api/session");if(s.authenticated){$("auth").classList.add("hidden");$("application").classList.remove("hidden");applyAppearance();await refreshDashboard()}else showAuth()}
+ catch(e){showAuth();$("authError").textContent=e.message}
+}
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();$("loginButton").disabled=true;$("authError").textContent="Signing in…";
+ try{await api("/api/login",{method:"POST",body:JSON.stringify({password:$("password").value})});$("password").value="";$("auth").classList.add("hidden");$("application").classList.remove("hidden");applyAppearance();await refreshDashboard()}
+ catch(err){$("authError").textContent=err.message}
+ finally{$("loginButton").disabled=false}
+});
+async function logout(){try{await api("/api/logout",{method:"POST",body:"{}"})}catch{}showAuth();notify("Signed out.")}
+function applyAppearance(){
+ const p=JSON.parse(localStorage.getItem("ohioHqAppearance")||'{"theme":"light","compact":false}');
+ document.documentElement.dataset.theme=p.theme==="dark"?"dark":"light";
+ document.body.classList.toggle("compact",!!p.compact);
+ if($("theme")){$("theme").value=p.theme;$("compact").checked=!!p.compact}
+}
+function go(next){
+ page=next;["home","leads","calls","settings"].forEach(id=>$(id).classList.toggle("hidden",id!==next));
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===next));
+ const meta={home:["WORKSPACE / OVERVIEW","Overview","A calm view of what needs your attention."],leads:["WORKSPACE / PROSPECTS","Your prospects","Search and review the businesses in your pipeline."],calls:["WORKSPACE / CALL QUEUE","Call queue","Record each call and keep your follow-ups in one place."],settings:["WORKSPACE / SETTINGS","Your settings","Adjust automation and personalize the workspace."]}[next];
+ $("eyebrow").textContent=meta[0];$("pageTitle").textContent=meta[1];$("pageSubtitle").textContent=meta[2];$("pageMessage").textContent="";
+ if(next==="leads")loadLeads(1);if(next==="calls")loadCalls();
+}
+async function refreshDashboard(){
+ $("connection").textContent="Connecting…";
+ try{
+  const d=await api("/api/dashboard");const m=d.metrics||{};
+  $("mProspects").textContent=(m.prospects||0).toLocaleString();$("mInbox").textContent=(m.inbox||0).toLocaleString();$("mFound").textContent=(m.found||0).toLocaleString();$("mCalls").textContent=(m.callQueue||0).toLocaleString();
+  const enabled=!(d.settings&&d.settings.enabled===false);
+  $("researchState").innerHTML='<span class="dot"></span>'+(enabled?"Active":"Paused");
+  $("lastRun").textContent=d.activity&&d.activity.lastRun||"Not run yet";$("lastComplete").textContent=d.activity&&d.activity.lastCompleted||"Not completed yet";
+  if(d.settings){$("enabled").checked=enabled;$("runs").value=String(d.settings.runsPerDay||2);$("batch").value=String(d.settings.batchSize||30);$("pages").value=String(d.settings.pagesPerSite||5);$("retry").value=String(d.settings.retryHours||24)}
+  $("connection").textContent="Connected";updateCapacity();
+ }catch(e){$("connection").textContent="Connection issue";$("pageMessage").textContent=e.message}
+}
+function debounceLeads(){clearTimeout(leadTimer);leadTimer=setTimeout(()=>loadLeads(1),250)}
+async function loadLeads(p){
+ leadPage=p||1;$("leadRows").innerHTML='<tr><td colspan="6" class="empty">Loading prospects…</td></tr>';
+ try{
+  const q=encodeURIComponent($("leadSearch").value||"");const d=await api("/api/leads?q="+q+"&page="+leadPage+"&pageSize=25");
+  leadPages=d.pages||1;$("leadCount").textContent=(d.total||0).toLocaleString()+" businesses · page "+(d.page||1)+" of "+leadPages;
+  $("leadRows").innerHTML=d.rows.length?d.rows.map(r=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.status)+'</div></td><td>'+esc(r.city)+'</td><td>'+esc(r.industry)+'</td><td>'+(r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'<span class="smallmuted">Not found</span>')+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="tag">'+esc(r.score||"—")+'</span></td></tr>').join(""):'<tr><td colspan="6" class="empty">No matching prospects found.</td></tr>';
+ }catch(e){$("leadRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}
+}
+function pageLeads(delta){loadLeads(Math.max(1,Math.min(leadPages,leadPage+delta)))}
+function normalizePhone(v){let d=String(v||"").replace(/\D/g,"");if(d.length===10)return "+1"+d;if(d.length===11&&d[0]==="1")return "+"+d;return d}
+async function loadCalls(){
+ $("callRows").innerHTML='<tr><td colspan="6" class="empty">Loading call queue…</td></tr>';
+ try{
+  const d=await api("/api/calls?q="+encodeURIComponent($("callSearch").value||""));callRows=d.rows||[];
+  $("callRows").innerHTML=callRows.length?callRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry)+'</div></td><td>'+esc(r.city)+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="tag">'+esc(r.score||"—")+'</span></td><td><span class="tag '+(/Ready|No Answer|Voicemail/i.test(r.outcome||"Ready")?"pending":"")+'">'+esc(r.outcome||"Ready to Call")+'</span></td><td><button class="btn secondary" onclick="openCallModal('+i+')">Manage</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">No call leads found. Refresh your queue from here once it is connected.</td></tr>';
+ }catch(e){$("callRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}
+}
+async function refreshCalls(){
+ const b=event&&event.target;if(b)b.disabled=true;
+ try{await api("/api/calls/refresh",{method:"POST",body:"{}"});await loadCalls();await refreshDashboard();notify("Call queue refreshed.")}
+ catch(e){notify(e.message)}finally{if(b)b.disabled=false}
+}
+function openCallModal(index){
+ const r=callRows[index];if(!r)return;
+ $("modalTitle").textContent=r.name;$("modalPhone").textContent=[r.phone,r.city].filter(Boolean).join(" · ");
+ $("modalKey").value=r.leadKey;$("modalOutcome").value=r.outcome||"Ready to Call";$("modalNotes").value=r.notes||"";
+ $("modalFollow").value=r.followUp?toDateInput(r.followUp):"";
+ $("callModal").classList.remove("hidden");
+}
+function toDateInput(value){const d=new Date(value);if(isNaN(d))return "";return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function closeCallModal(){$("callModal").classList.add("hidden")}
+async function saveCall(){
+ const b=$("saveCallButton");b.disabled=true;
+ try{
+  await api("/api/calls/update",{method:"POST",body:JSON.stringify({leadKey:$("modalKey").value,outcome:$("modalOutcome").value,notes:$("modalNotes").value,followUp:$("modalFollow").value})});
+  closeCallModal();await loadCalls();await refreshDashboard();notify("Call details saved.")
+ }catch(e){notify(e.message)}finally{b.disabled=false}
+}
+function updateCapacity(){$("capacity").textContent="Daily website-check capacity: "+(Number($("runs").value)*Number($("batch").value))+" checks"}
+["runs","batch"].forEach(id=>$(id).addEventListener("change",updateCapacity));
+async function saveSettings(){
+ const b=event&&event.target;if(b)b.disabled=true;
+ const settings={enabled:$("enabled").checked,runsPerDay:Number($("runs").value),batchSize:Number($("batch").value),pagesPerSite:Number($("pages").value),retryHours:Number($("retry").value)};
+ try{await api("/api/settings",{method:"POST",body:JSON.stringify(settings)});notify("Email research settings saved.");await refreshDashboard()}
+ catch(e){notify(e.message)}finally{if(b)b.disabled=false}
+}
+function saveAppearance(){
+ const p={theme:$("theme").value==="dark"?"dark":"light",compact:$("compact").checked};
+ localStorage.setItem("ohioHqAppearance",JSON.stringify(p));applyAppearance();notify("Appearance saved on this device.")
+}
+$("callModal").addEventListener("click",e=>{if(e.target===$("callModal"))closeCallModal()});
+start();
+</script>
+</body>
+</html>
