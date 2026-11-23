@@ -78,7 +78,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
       <div class="pager"><span id="leadCount">—</span><span><button class="btn ghost" onclick="pageLeads(-1)">Previous</button> <button class="btn ghost" onclick="pageLeads(1)">Next</button></span></div>
     </section>
     <section id="calls" class="hidden">
-      <div class="toolbar"><input id="callSearch" class="search" placeholder="Search your call list…" oninput="loadCalls()"><div class="spacer"></div><button class="btn secondary" onclick="refreshCalls()">Refresh queue</button></div>
+      <div class="toolbar"><input id="callSearch" class="search" placeholder="Search your call list…" oninput="loadCalls()"><div class="spacer"></div><button class="btn secondary" onclick="refreshCalls(this)">Refresh queue</button></div>
       <div class="tablebox"><table><thead><tr><th>Business</th><th>Location</th><th>Phone</th><th>Fit score</th><th>Outcome</th><th></th></tr></thead><tbody id="callRows"><tr><td colspan="6" class="empty">Loading call queue…</td></tr></tbody></table></div>
       <div class="notice">Click a phone number to open your Mac's configured calling app. Use Manage to save notes, outcomes and follow-up dates.</div>
     </section>
@@ -88,7 +88,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
           <div class="toggleline"><div><strong>Automatic research</strong><small>Pause or resume website checks</small></div><input id="enabled" class="switch" type="checkbox"></div>
           <div class="fieldrow"><div class="field"><label for="runs">Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div><div class="field"><label for="batch">Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
           <div class="fieldrow"><div class="field"><label for="pages">Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div><div class="field"><label for="retry">Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
-          <div class="hint" id="capacity">Daily capacity: —</div><div style="margin-top:17px"><button class="btn" onclick="saveSettings()">Save research settings</button></div>
+          <div class="hint" id="capacity">Daily capacity: —</div><div style="margin-top:17px"><button class="btn" onclick="saveSettings(this)">Save research settings</button></div>
         </div>
         <div class="card"><h2 class="sectiontitle">Appearance</h2><div class="sectiondesc">Adjust the workspace to your preference.</div>
           <div class="field"><label for="theme">Color theme</label><select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></div>
@@ -178,8 +178,8 @@ async function loadCalls(){
   $("callRows").innerHTML=callRows.length?callRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry)+'</div></td><td>'+esc(r.city)+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="tag">'+esc(r.score||"—")+'</span></td><td><span class="tag '+(/Ready|No Answer|Voicemail/i.test(r.outcome||"Ready")?"pending":"")+'">'+esc(r.outcome||"Ready to Call")+'</span></td><td><button class="btn secondary" onclick="openCallModal('+i+')">Manage</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">No call leads found. Refresh your queue from here once it is connected.</td></tr>';
  }catch(e){$("callRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}
 }
-async function refreshCalls(){
- const b=event&&event.target;if(b)b.disabled=true;
+async function refreshCalls(b){
+ if(b)b.disabled=true;
  try{await api("/api/calls/refresh",{method:"POST",body:"{}"});await loadCalls();await refreshDashboard();notify("Call queue refreshed.")}
  catch(e){notify(e.message)}finally{if(b)b.disabled=false}
 }
@@ -201,8 +201,8 @@ async function saveCall(){
 }
 function updateCapacity(){$("capacity").textContent="Daily website-check capacity: "+(Number($("runs").value)*Number($("batch").value))+" checks"}
 ["runs","batch"].forEach(id=>$(id).addEventListener("change",updateCapacity));
-async function saveSettings(){
- const b=event&&event.target;if(b)b.disabled=true;
+async function saveSettings(b){
+ if(b)b.disabled=true;
  const settings={enabled:$("enabled").checked,runsPerDay:Number($("runs").value),batchSize:Number($("batch").value),pagesPerSite:Number($("pages").value),retryHours:Number($("retry").value)};
  try{await api("/api/settings",{method:"POST",body:JSON.stringify(settings)});notify("Email research settings saved.");await refreshDashboard()}
  catch(e){notify(e.message)}finally{if(b)b.disabled=false}
