@@ -19,6 +19,15 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
 .authwrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--bg)}.authcard{width:min(410px,100%);padding:32px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.authlogo{display:flex;align-items:center;gap:10px;margin-bottom:25px}.authcard h1{font-size:24px}.authcard p{font-size:13px;color:var(--muted);margin-bottom:23px}.authcard input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);margin-bottom:12px}.authcard .btn{width:100%;padding:12px}.autherror{color:var(--red);font-size:12px;margin-top:10px;min-height:18px}
 .modalback{position:fixed;inset:0;background:rgba(12,25,29,.43);display:grid;place-items:center;padding:18px;z-index:20}.modal{width:min(480px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.2)}.modalhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.modalhead h2{font-size:18px;margin:0}.xbtn{border:0;background:var(--panel2);color:var(--muted);height:30px;width:30px;border-radius:8px}.modal .field{margin:12px 0}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .compact main{padding-top:22px}.compact .card{padding:14px}.compact td{padding:9px 12px}
+.detailgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.detailpanel{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.detailpanel.wide{grid-column:1/-1}
+.detaillabel{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:800;margin-bottom:5px}
+.detailtext{font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.scriptbox{border:1px solid var(--line);background:var(--panel2);padding:14px;border-radius:10px;white-space:pre-wrap;font-size:12px;line-height:1.6;max-height:320px;overflow:auto}
+.modal{max-height:92vh;overflow:auto}
+.leadscore{font-size:12px;font-weight:800;color:var(--accent)}
+@media(max-width:600px){.detailgrid{grid-template-columns:1fr}.detailpanel.wide{grid-column:auto}}
 @media(max-width:920px){.app{grid-template-columns:72px minmax(0,1fr)}.sidebar{padding:20px 8px}.brand{justify-content:center;padding:0 0 24px}.brandname,.navlabel,.navtext,.sidefoot{display:none}.nav button{justify-content:center;padding:12px 4px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.contentgrid{grid-template-columns:1fr}}
 @media(max-width:600px){.app{display:block}.sidebar{position:sticky;top:0;z-index:10;display:block;padding:7px 8px;border-right:0;border-bottom:1px solid var(--line)}.brand{display:none}.nav{display:flex;justify-content:space-around}.nav button{padding:9px 11px}.navicon{font-size:17px}main{padding:22px 13px}.topbar{margin-bottom:18px}.connected{display:none}.metrics{gap:8px}.card{padding:13px}.metricnumber{font-size:24px}.fieldrow{grid-template-columns:1fr}.title{font-size:24px}.toolbar{flex-wrap:wrap}.search{max-width:none;flex:1}}
 </style>
@@ -73,8 +82,9 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
       </div>
     </section>
     <section id="leads" class="hidden">
-      <div class="toolbar"><input id="leadSearch" class="search" placeholder="Search business, city, phone, email…" oninput="debouncedLeads()"><button class="btn secondary" onclick="loadLeads(1)">Refresh</button></div>
-      <div class="tablebox"><table><thead><tr><th>Business</th><th>Location</th><th>Industry</th><th>Public email</th><th>Phone</th><th>Lead score</th></tr></thead><tbody id="leadRows"><tr><td colspan="6" class="empty">Loading prospects…</td></tr></tbody></table></div>
+      <div class="toolbar"><input id="leadSearch" class="search" placeholder="Search business, city, phone, email…" oninput="debounceLeads()"><button class="btn secondary" onclick="loadLeads(1)">Refresh</button></div>
+      <div class="notice">Open a prospect to review its qualification details and personalized email. Choose Open in Gmail to review the message and send it yourself.</div>
+      <div class="tablebox"><table><thead><tr><th>Business</th><th>Location</th><th>Public email</th><th>Phone</th><th>Lead score</th><th>Sales status</th><th></th></tr></thead><tbody id="leadRows"><tr><td colspan="7" class="empty">Loading prospects…</td></tr></tbody></table></div>
       <div class="pager"><span id="leadCount">—</span><span><button class="btn ghost" onclick="pageLeads(-1)">Previous</button> <button class="btn ghost" onclick="pageLeads(1)">Next</button></span></div>
     </section>
     <section id="calls" class="hidden">
@@ -84,7 +94,7 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
     </section>
     <section id="settings" class="hidden">
       <div class="settingsgrid">
-        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">Save your preferred research settings. The scheduled research worker is still being migrated, so these preferences do not control its schedule yet.</div>
+        <div class="card"><h2 class="sectiontitle">Email research</h2><div class="sectiondesc">The website-email crawler remains on the existing GitHub Actions schedule. These saved preferences control its run interval, batch size, page depth, and retry window.</div>
           <div class="toggleline"><div><strong>Automatic research</strong><small>Pause or resume website checks</small></div><input id="enabled" class="switch" type="checkbox"></div>
           <div class="fieldrow"><div class="field"><label for="runs">Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div><div class="field"><label for="batch">Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
           <div class="fieldrow"><div class="field"><label for="pages">Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div><div class="field"><label for="retry">Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
@@ -104,15 +114,26 @@ main{padding:35px clamp(18px,4vw,56px);width:100%;max-width:1500px;margin:auto}.
   <div class="modal">
     <div class="modalhead"><div><h2 id="modalTitle">Update call</h2><div class="smallmuted" id="modalPhone"></div></div><button class="xbtn" onclick="closeCallModal()">✕</button></div>
     <input id="modalKey" type="hidden">
+    <div id="callContext"></div>
     <div class="field"><label for="modalOutcome">Call outcome</label><select id="modalOutcome"><option>Ready to Call</option><option>No Answer</option><option>Left Voicemail</option><option>Spoke — Follow Up</option><option>Interested</option><option>Not Interested</option><option>Wrong Number</option><option>Do Not Call</option><option>Completed</option></select></div>
     <div class="field"><label for="modalNotes">Call notes</label><textarea id="modalNotes" placeholder="What happened on the call?"></textarea></div>
     <div class="field"><label for="modalFollow">Follow-up date</label><input id="modalFollow" type="date"></div>
     <div class="modalactions"><button class="btn ghost" onclick="closeCallModal()">Cancel</button><button class="btn" id="saveCallButton" onclick="saveCall()">Save outcome</button></div>
   </div>
 </div>
+<div id="prospectModal" class="modalback hidden" role="dialog" aria-modal="true">
+  <div class="modal" style="width:min(760px,100%)">
+    <div class="modalhead"><div><h2 id="prospectModalTitle">Prospect details</h2><div class="smallmuted" id="prospectModalMeta"></div></div><button class="xbtn" onclick="closeProspectModal()">✕</button></div>
+    <div id="prospectContext"></div>
+    <div class="field"><label for="prospectSubject">Personalized email subject</label><input id="prospectSubject" type="text" placeholder="No subject saved"></div>
+    <div class="field"><label for="prospectBody">Personalized email body</label><textarea id="prospectBody" rows="12" placeholder="No email draft saved"></textarea></div>
+    <div class="hint">The subject and body above come from your spreadsheet. Edit them here before composing; this app does not append a footer.</div>
+    <div class="modalactions"><button class="btn ghost" onclick="closeProspectModal()">Close</button><button class="btn" id="composeEmailButton" onclick="composeProspectEmail()">Open in Gmail</button></div>
+  </div>
+</div>
 <div id="toast" class="toast hidden"></div>
 <script>
-let page="home", leadPage=1, leadPages=1, leadTimer=null, callRows=[];
+let page="home", leadPage=1, leadPages=1, leadTimer=null, callRows=[], leadRows=[], selectedProspect=null, selectedCall=null;
 const $=id=>document.getElementById(id);
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function notify(message){const t=$("toast");t.textContent=message;t.classList.remove("hidden");clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.classList.add("hidden"),3600)}
@@ -162,20 +183,21 @@ async function refreshDashboard(){
 }
 function debounceLeads(){clearTimeout(leadTimer);leadTimer=setTimeout(()=>loadLeads(1),250)}
 async function loadLeads(p){
- leadPage=p||1;$("leadRows").innerHTML='<tr><td colspan="6" class="empty">Loading prospects…</td></tr>';
+ leadPage=p||1;$("leadRows").innerHTML='<tr><td colspan="7" class="empty">Loading prospects…</td></tr>';
  try{
   const q=encodeURIComponent($("leadSearch").value||"");const d=await api("/api/leads?q="+q+"&page="+leadPage+"&pageSize=25");
-  leadPages=d.pages||1;$("leadCount").textContent=(d.total||0).toLocaleString()+" businesses · page "+(d.page||1)+" of "+leadPages;
-  $("leadRows").innerHTML=d.rows.length?d.rows.map(r=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.status)+'</div></td><td>'+esc(r.city)+'</td><td>'+esc(r.industry)+'</td><td>'+(r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'<span class="smallmuted">Not found</span>')+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="tag">'+esc(r.score||"—")+'</span></td></tr>').join(""):'<tr><td colspan="6" class="empty">No matching prospects found.</td></tr>';
- }catch(e){$("leadRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}
+  leadPages=d.pages||1;leadRows=d.rows||[];$("leadCount").textContent=(d.total||0).toLocaleString()+" businesses · page "+(d.page||1)+" of "+leadPages;
+  $("leadRows").innerHTML=leadRows.length?leadRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry||"")+'</div></td><td>'+esc(r.city||"—")+'</td><td>'+(r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'<span class="smallmuted">Not found</span>')+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td>'+(r.score?'<span class="leadscore">'+esc(r.score)+'/100</span>':'<span class="smallmuted">—</span>')+'</td><td><span class="tag">'+esc(r.status||"—")+'</span></td><td><button class="btn secondary" onclick="openProspectModal('+i+')">View details</button></td></tr>').join(""):'<tr><td colspan="7" class="empty">No matching prospects found.</td></tr>';
+ }catch(e){$("leadRows").innerHTML='<tr><td colspan="7" class="empty">'+esc(e.message)+'</td></tr>'}
 }
+
 function pageLeads(delta){loadLeads(Math.max(1,Math.min(leadPages,leadPage+delta)))}
 function normalizePhone(v){let d=String(v||"").replace(/\D/g,"");if(d.length===10)return "+1"+d;if(d.length===11&&d[0]==="1")return "+"+d;return d}
 async function loadCalls(){
  $("callRows").innerHTML='<tr><td colspan="6" class="empty">Loading call queue…</td></tr>';
  try{
   const d=await api("/api/calls?q="+encodeURIComponent($("callSearch").value||""));callRows=d.rows||[];
-  $("callRows").innerHTML=callRows.length?callRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry)+'</div></td><td>'+esc(r.city)+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="tag">'+esc(r.score||"—")+'</span></td><td><span class="tag '+(/Ready|No Answer|Voicemail/i.test(r.outcome||"Ready")?"pending":"")+'">'+esc(r.outcome||"Ready to Call")+'</span></td><td><button class="btn secondary" onclick="openCallModal('+i+')">Manage</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">No call leads found. Refresh your queue from here once it is connected.</td></tr>';
+  $("callRows").innerHTML=callRows.length?callRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry||"")+'</div></td><td>'+esc(r.city||"—")+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td><span class="leadscore">'+esc(r.score||"—")+'</span></td><td><span class="tag '+(/Ready|No Answer|Voicemail/i.test(r.outcome||"Ready")?"pending":"")+'">'+esc(r.outcome||"Ready to Call")+'</span></td><td><button class="btn secondary" onclick="openCallModal('+i+')">View call</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">No call leads found. Refresh your queue from here once it is connected.</td></tr>';
  }catch(e){$("callRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}
 }
 async function refreshCalls(b){
@@ -183,13 +205,78 @@ async function refreshCalls(b){
  try{await api("/api/calls/refresh",{method:"POST",body:"{}"});await loadCalls();await refreshDashboard();notify("Call queue refreshed.")}
  catch(e){notify(e.message)}finally{if(b)b.disabled=false}
 }
+function detailTile(label,value,wide){
+ return '<div class="detailpanel'+(wide?' wide':'')+'"><div class="detaillabel">'+esc(label)+'</div><div class="detailtext">'+esc(value||"—")+'</div></div>';
+}
+function safeWebsiteUrl(value){
+ const raw=String(value||"").trim();if(!raw)return "";
+ const url=/^https?:\/\//i.test(raw)?raw:"https://"+raw;
+ try{const parsed=new URL(url);return parsed.protocol==="https:"||parsed.protocol==="http:"?parsed.href:""}catch{return ""}
+}
 function openCallModal(index){
- const r=callRows[index];if(!r)return;
- $("modalTitle").textContent=r.name;$("modalPhone").textContent=[r.phone,r.city].filter(Boolean).join(" · ");
+ const r=callRows[index];if(!r)return;selectedCall=r;
+ $("modalTitle").textContent=r.name;$("modalPhone").textContent=[r.phone,r.city,r.address].filter(Boolean).join(" · ");
  $("modalKey").value=r.leadKey;$("modalOutcome").value=r.outcome||"Ready to Call";$("modalNotes").value=r.notes||"";
  $("modalFollow").value=r.followUp?toDateInput(r.followUp):"";
+ const website=safeWebsiteUrl(r.website);
+ const websiteHtml=website?'<a href="'+esc(website)+'" target="_blank" rel="noopener">Open business website ↗</a>':'No website listed';
+ $("callContext").innerHTML='<div class="detailgrid">'+
+  detailTile("Fit score",r.score? r.score+" / 100":"Not scored")+
+  detailTile("Industry",r.industry)+
+  detailTile("Location",r.city)+
+  detailTile("Address",r.address,true)+
+  '<div class="detailpanel"><div class="detaillabel">Website</div><div class="detailtext">'+websiteHtml+'</div></div>'+
+  detailTile("Source",r.sourceSheet? r.sourceSheet+(r.sourceRow?" · row "+r.sourceRow:""):"—")+
+  detailTile("Company overview / research notes",r.overview,true)+
+  detailTile("Why this lead ranks here",r.whyRanksHere,true)+
+  '<div class="detailpanel wide"><div class="detaillabel">Suggested call script</div><div id="callScriptText" class="scriptbox">'+esc(r.script||"No call script saved for this lead.")+'</div><div style="margin-top:10px"><button class="btn secondary" type="button" onclick="copyCallScript()">Copy call script</button></div></div>'+
+  '</div>';
  $("callModal").classList.remove("hidden");
 }
+async function copyCallScript(){
+ try{await navigator.clipboard.writeText(selectedCall&&selectedCall.script||"");notify("Call script copied.");}
+ catch(e){notify("Could not access clipboard. Select and copy the script manually.");}
+}
+function openProspectModal(index){
+ const r=leadRows[index];if(!r)return;selectedProspect=r;
+ $("prospectModalTitle").textContent=r.name;
+ $("prospectModalMeta").textContent=[r.city,r.industry,r.score? "Lead score "+r.score+"/100":""].filter(Boolean).join(" · ");
+ const website=safeWebsiteUrl(r.website);
+ const websiteHtml=website?'<a href="'+esc(website)+'" target="_blank" rel="noopener">Open website ↗</a>':'Not listed';
+ $("prospectContext").innerHTML='<div class="detailgrid">'+
+  detailTile("Lead score",r.score? r.score+" / 100":"Not scored")+
+  detailTile("Sales status",r.status)+
+  detailTile("Public email",r.email)+
+  detailTile("Phone",r.phone)+
+  detailTile("Location",r.city)+
+  detailTile("Address",r.address,true)+
+  '<div class="detailpanel"><div class="detaillabel">Website</div><div class="detailtext">'+websiteHtml+'</div></div>'+
+  detailTile("Google rating / reviews",r.rating? r.rating+"★ · "+(r.reviewCount||"—")+" reviews":"Not available")+
+  detailTile("Unanswered reviews",r.unansweredReviews)+
+  detailTile("Website / mobile",[(r.hasWebsite||"Website unknown"),(r.mobileFriendly||"Mobile status unknown")].join(" · "))+
+  detailTile("Recent review activity",r.recentActivity)+
+  detailTile("Recommended service",r.recommendedService)+
+  detailTile("Why it qualifies",r.qualificationReason,true)+
+  detailTile("Email research",[(r.emailResearchStatus||"Status not recorded"),(r.emailConfidence||""),(r.emailType||"")].filter(Boolean).join(" · "),true)+
+  detailTile("Research notes",r.emailResearchNotes,true)+
+  detailTile("Auto-qualification",[(r.autoQualificationStatus||""),(r.autoQualificationReason||"")].filter(Boolean).join(" — "),true)+
+  '</div>';
+ $("prospectSubject").value=r.subject||"";
+ $("prospectBody").value=r.emailDraft||"";
+ $("composeEmailButton").disabled=!(r.email&&r.subject&&r.emailDraft);
+ $("composeEmailButton").textContent=r.email?"Open in Gmail":"No public email available";
+ $("prospectModal").classList.remove("hidden");
+}
+function closeProspectModal(){$("prospectModal").classList.add("hidden");selectedProspect=null}
+function composeProspectEmail(){
+ if(!selectedProspect||!selectedProspect.email){notify("This prospect does not have a public email address.");return}
+ const subject=$("prospectSubject").value||"",body=$("prospectBody").value||"";
+ if(!subject.trim()||!body.trim()){notify("Add an email subject and body first.");return}
+ const url="https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(selectedProspect.email)+"&su="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+ window.open(url,"_blank","noopener");
+ notify("Gmail opened with your message. Review it and click Send there.");
+}
+
 function toDateInput(value){const d=new Date(value);if(isNaN(d))return "";return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function closeCallModal(){$("callModal").classList.add("hidden")}
 async function saveCall(){
@@ -212,6 +299,7 @@ function saveAppearance(){
  localStorage.setItem("ohioHqAppearance",JSON.stringify(p));applyAppearance();notify("Appearance saved on this device.")
 }
 $("callModal").addEventListener("click",e=>{if(e.target===$("callModal"))closeCallModal()});
+$("prospectModal").addEventListener("click",e=>{if(e.target===$("prospectModal"))closeProspectModal()});
 start();
 </script>
 </body>
