@@ -71,17 +71,33 @@ export async function leads(env,query,page,size){
  }))};
 }
 export async function calls(env,query){
- const rows=await readTab(env,"Call Queue").catch(()=>[]);if(!rows.length)return{ok:true,rows:[],total:0};
+ const [rows,prospects,inbox]=await Promise.all([
+  readTab(env,"Call Queue").catch(()=>[]),
+  readTab(env,"Prospects").catch(()=>[]),
+  readTab(env,"Discovery Inbox").catch(()=>[])
+ ]);
+ if(!rows.length)return{ok:true,rows:[],total:0};
  const h=rows[0],q=String(query||"").trim().toLowerCase();
- const a=rows.slice(1).map((r,i)=>({
-  rowNumber:i+2,name:v(r,h,"Business Name"),phone:v(r,h,"Phone"),city:v(r,h,"City"),address:v(r,h,"Address"),
-  industry:v(r,h,"Industry"),score:v(r,h,"Likelihood Score (0-100)"),overview:v(r,h,"Company Overview / Research Notes"),
-  website:v(r,h,"Website"),script:v(r,h,"Suggested Call Script"),outcome:v(r,h,"Call Outcome"),notes:v(r,h,"Call Notes"),
-  followUp:v(r,h,"Follow-up Date"),leadKey:v(r,h,"Lead Key"),sourceSheet:v(r,h,"Source Sheet"),sourceRow:v(r,h,"Source Row"),
-  whyRanksHere:v(r,h,"Why This Lead Ranks Here")
- })).filter(x=>x.name&&(!q||[x.name,x.phone,x.city,x.industry,x.outcome,x.address].some(t=>String(t||"").toLowerCase().includes(q)))).slice(0,250);
+ const sourceWebsite=(sheetName,rowNumber)=>{
+  const source=sheetName==="Prospects"?prospects:(sheetName==="Discovery Inbox"?inbox:[]);
+  const row=source[Number(rowNumber)-1],headers=source[0]||[];
+  return row?v(row,headers,"Website URL"):"";
+ };
+ const a=rows.slice(1).map((r,i)=>{
+  const sourceSheet=v(r,h,"Source Sheet"),sourceRow=v(r,h,"Source Row");
+  const sheetWebsite=v(r,h,"Website");
+  const website=/^https?:\/\//i.test(sheetWebsite)?sheetWebsite:sourceWebsite(sourceSheet,sourceRow);
+  return{
+   rowNumber:i+2,name:v(r,h,"Business Name"),phone:v(r,h,"Phone"),city:v(r,h,"City"),address:v(r,h,"Address"),
+   industry:v(r,h,"Industry"),score:v(r,h,"Likelihood Score (0-100)"),overview:v(r,h,"Company Overview / Research Notes"),
+   website,script:v(r,h,"Suggested Call Script"),outcome:v(r,h,"Call Outcome"),notes:v(r,h,"Call Notes"),
+   followUp:v(r,h,"Follow-up Date"),leadKey:v(r,h,"Lead Key"),sourceSheet,sourceRow,
+   whyRanksHere:v(r,h,"Why This Lead Ranks Here")
+  };
+ }).filter(x=>x.name&&(!q||[x.name,x.phone,x.city,x.industry,x.outcome,x.address].some(t=>String(t||"").toLowerCase().includes(q))));
  return{ok:true,rows:a,total:a.length};
 }
+
 export async function saveCall(env,x){
  const rows=await readTab(env,"Call Queue");if(!rows.length)throw Error("Call Queue is empty.");
  const h=rows[0],key=String(x.leadKey||""),i=ix(h,"Lead Key"),at=rows.slice(1).findIndex(r=>i>=0&&String(r[i]||"").trim()===key);if(at<0)throw Error("Lead not found. Refresh the call queue.");
