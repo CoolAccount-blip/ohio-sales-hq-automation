@@ -37,6 +37,7 @@ function ohioCommandCenterOnOpen() {
     .addItem('Open Command Center', 'openOhioCommandCenter')
     .addItem('Refresh Command Center', 'refreshOhioCommandCenter')
     .addItem('Refresh Call Queue', 'refreshOhioCallQueue')
+    .addItem('Call Selected Lead on Mac', 'callSelectedOhioLeadOnMac')
     .addSeparator()
     .addItem('Prioritize Next Email Research Run', 'prioritizeNextOhioEmailRun')
     .addItem('Retry Failed Email Research', 'retryFailedOhioEmailResearch')
