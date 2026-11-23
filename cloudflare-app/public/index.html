@@ -187,12 +187,13 @@ async function loadLeads(p){
  try{
   const q=encodeURIComponent($("leadSearch").value||"");const d=await api("/api/leads?q="+q+"&page="+leadPage+"&pageSize=25");
   leadPages=d.pages||1;leadRows=d.rows||[];$("leadCount").textContent=(d.total||0).toLocaleString()+" businesses · page "+(d.page||1)+" of "+leadPages;
-  $("leadRows").innerHTML=leadRows.length?leadRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry||"")+'</div></td><td>'+esc(r.city||"—")+'</td><td>'+(r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'<span class="smallmuted">Not found</span>')+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td>'+(r.score?'<span class="leadscore">'+esc(r.score)+'/100</span>':'<span class="smallmuted">—</span>')+'</td><td><span class="tag">'+esc(r.status||"—")+'</span></td><td><button class="btn secondary" onclick="openProspectModal('+i+')">View details</button></td></tr>').join(""):'<tr><td colspan="7" class="empty">No matching prospects found.</td></tr>';
+  $("leadRows").innerHTML=leadRows.length?leadRows.map((r,i)=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="smallmuted">'+esc(r.industry||"")+'</div></td><td>'+esc(r.city||"—")+'</td><td>'+(isEmailAddress(r.email)?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'<span class="smallmuted">Not found</span>')+'</td><td>'+(r.phone?'<a class="phone" href="tel:'+esc(normalizePhone(r.phone))+'">'+esc(r.phone)+'</a>':'—')+'</td><td>'+(r.score?'<span class="leadscore">'+esc(r.score)+'/100</span>':'<span class="smallmuted">—</span>')+'</td><td><span class="tag">'+esc(r.status||"—")+'</span></td><td><button class="btn secondary" onclick="openProspectModal('+i+')">View details</button></td></tr>').join(""):'<tr><td colspan="7" class="empty">No matching prospects found.</td></tr>';
  }catch(e){$("leadRows").innerHTML='<tr><td colspan="7" class="empty">'+esc(e.message)+'</td></tr>'}
 }
 
 function pageLeads(delta){loadLeads(Math.max(1,Math.min(leadPages,leadPage+delta)))}
 function normalizePhone(v){let d=String(v||"").replace(/\D/g,"");if(d.length===10)return "+1"+d;if(d.length===11&&d[0]==="1")return "+"+d;return d}
+function isEmailAddress(value){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value||"").trim())}
 async function loadCalls(){
  $("callRows").innerHTML='<tr><td colspan="6" class="empty">Loading call queue…</td></tr>';
  try{
@@ -246,7 +247,7 @@ function openProspectModal(index){
  $("prospectContext").innerHTML='<div class="detailgrid">'+
   detailTile("Lead score",r.score? r.score+" / 100":"Not scored")+
   detailTile("Sales status",r.status)+
-  detailTile("Public email",r.email)+
+  detailTile("Public email",isEmailAddress(r.email)?r.email:"No valid public email found")+
   detailTile("Phone",r.phone)+
   detailTile("Location",r.city)+
   detailTile("Address",r.address,true)+
@@ -265,13 +266,13 @@ function openProspectModal(index){
   '</div>';
  $("prospectSubject").value=r.subject||"";
  $("prospectBody").value=r.emailDraft||"";
- $("composeEmailButton").disabled=!(r.email&&r.subject&&r.emailDraft);
- $("composeEmailButton").textContent=r.email?"Open in Gmail":"No public email available";
+ $("composeEmailButton").disabled=!(isEmailAddress(r.email)&&r.subject&&r.emailDraft);
+ $("composeEmailButton").textContent=isEmailAddress(r.email)?"Open in Gmail":"No public email available";
  $("prospectModal").classList.remove("hidden");
 }
 function closeProspectModal(){$("prospectModal").classList.add("hidden");selectedProspect=null}
 function composeProspectEmail(){
- if(!selectedProspect||!selectedProspect.email){notify("This prospect does not have a public email address.");return}
+ if(!selectedProspect||!isEmailAddress(selectedProspect.email)){notify("This prospect does not have a valid public email address.");return}
  const subject=$("prospectSubject").value||"",body=$("prospectBody").value||"";
  if(!subject.trim()||!body.trim()){notify("Add an email subject and body first.");return}
  const url="https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(selectedProspect.email)+"&su="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
