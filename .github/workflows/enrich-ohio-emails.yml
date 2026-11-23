@@ -2,15 +2,12 @@ name: Find Public Business Emails
 
 on:
   workflow_dispatch:
-  schedule:
-    # Twice daily at 01:30 and 13:30 UTC; up to 40 queued websites per run.
-    - cron: '30 1,13 * * *'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ohio-email-research-queue
+  group: ohio-email-research-worker
   cancel-in-progress: false
 
 jobs:
