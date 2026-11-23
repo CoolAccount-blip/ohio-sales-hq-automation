@@ -36,6 +36,58 @@ function installOhioCallQueue() {
   );
 }
 
+function callSelectedOhioLeadOnMac() {
+  const ss = (typeof getAutomationSpreadsheet_ === 'function')
+    ? getAutomationSpreadsheet_() : SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const sh = ss && ss.getActiveSheet();
+  if (!sh || sh.getName() !== OHIO_CALL_QUEUE.SHEET) {
+    ui.alert('Open the Call Queue tab and select a lead row first.');
+    return;
+  }
+
+  const row = sh.getActiveRange() ? sh.getActiveRange().getRow() : 0;
+  if (row < 2) {
+    ui.alert('Select a business row (not the header) in the Call Queue first.');
+    return;
+  }
+
+  const phone = String(sh.getRange(row, 3).getDisplayValue() || '').trim();
+  const digits = phone.replace(/\\D/g, '');
+  if (digits.length < 7) {
+    ui.alert('This row does not contain a usable phone number.');
+    return;
+  }
+
+  let dial = digits;
+  if (digits.length === 10) dial = '+1' + digits;
+  else if (digits.length === 11 && digits.charAt(0) === '1') dial = '+' + digits;
+  else if (phone.charAt(0) === '+') dial = '+' + digits;
+  const tel = 'tel:' + dial;
+  const business = String(sh.getRange(row, 2).getDisplayValue() || 'Selected business')
+    .replace(/[&<>"]/g, '');
+  const shownPhone = phone.replace(/[&<>"]/g, '');
+
+  // Google Sheets' HYPERLINK() blocks tel: URLs. This user-clicked HTML link
+  // hands the tel: URI to the browser, which can open the Mac's registered
+  // calling app (FaceTime/Phone) when Continuity calling is configured.
+  const html = '<!DOCTYPE html><html><head><base target="_top">' +
+    '<style>body{font:14px Arial,sans-serif;padding:18px;color:#172554}' +
+    'a{display:inline-block;background:#1d4ed8;color:white;padding:11px 18px;' +
+    'border-radius:6px;text-decoration:none;font-weight:600}' +
+    '.muted{color:#64748b;font-size:12px;margin-top:14px}</style></head><body>' +
+    '<h3 style="margin:0 0 8px">Call ' + business + '</h3>' +
+    '<p style="margin:0 0 18px">' + shownPhone + '</p>' +
+    '<a href="' + tel + '" target="_top">Open calling app</a>' +
+    '<p class="muted">Your Mac may ask which app to use. Confirm the call in the app.</p>' +
+    '</body></html>';
+
+  ui.showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(340).setHeight(220),
+    'Call on Mac'
+  );
+}
+
 function refreshOhioCallQueue() {
   const ss = (typeof getAutomationSpreadsheet_ === 'function')
     ? getAutomationSpreadsheet_() : SpreadsheetApp.getActiveSpreadsheet();
