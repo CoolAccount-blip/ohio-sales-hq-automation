@@ -379,11 +379,33 @@ function makeInboxRow_(r, possibleDuplicate) {
 
 function getEmailResearchSettings_() {
   const props = PropertiesService.getScriptProperties();
-  const enabledRaw = props.getProperty('OHIO_EMAIL_RESEARCH_ENABLED');
-  const runsRaw = Number(props.getProperty('OHIO_EMAIL_RESEARCH_RUNS_PER_DAY'));
-  const batchSetting = props.getProperty('OHIO_EMAIL_RESEARCH_BATCH_SIZE');
-  const pagesSetting = props.getProperty('OHIO_EMAIL_RESEARCH_PAGES_PER_SITE');
-  const retrySetting = props.getProperty('OHIO_EMAIL_RESEARCH_RETRY_HOURS');
+  const sheetValues = Object.create(null);
+  // The Cloudflare dashboard writes this tab directly through the Sheets API.
+  // Read it first so the website controls the existing scheduled worker without
+  // maintaining a second scheduler or crawler.
+  try {
+    const ss = getAutomationSpreadsheet_();
+    const settingsSheet = ss && ss.getSheetByName('App Settings');
+    if (settingsSheet && settingsSheet.getLastRow() > 1) {
+      const settingsRows = settingsSheet.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getDisplayValues();
+      settingsRows.forEach(function(row) {
+        const key = String(row[0] || '').trim();
+        if (key) sheetValues[key] = String(row[1] || '').trim();
+      });
+    }
+  } catch (error) {
+    Logger.log('Could not read App Settings tab; using Script Properties: ' + error);
+  }
+  function setting(sheetKey, propertyKey) {
+    return Object.prototype.hasOwnProperty.call(sheetValues, sheetKey)
+      ? sheetValues[sheetKey] : props.getProperty(propertyKey);
+  }
+
+  const enabledRaw = setting('enabled', 'OHIO_EMAIL_RESEARCH_ENABLED');
+  const runsRaw = Number(setting('runsPerDay', 'OHIO_EMAIL_RESEARCH_RUNS_PER_DAY'));
+  const batchSetting = setting('batchSize', 'OHIO_EMAIL_RESEARCH_BATCH_SIZE');
+  const pagesSetting = setting('pagesPerSite', 'OHIO_EMAIL_RESEARCH_PAGES_PER_SITE');
+  const retrySetting = setting('retryHours', 'OHIO_EMAIL_RESEARCH_RETRY_HOURS');
   const batchRaw = batchSetting === null || batchSetting === '' ? 50 : Number(batchSetting);
   const pagesRaw = pagesSetting === null || pagesSetting === '' ? 5 : Number(pagesSetting);
   const retryRaw = retrySetting === null || retrySetting === '' ? 24 : Number(retrySetting);
@@ -393,13 +415,43 @@ function getEmailResearchSettings_() {
   const pagesPerSite = Number.isFinite(pagesRaw) ? Math.max(3, Math.min(8, Math.round(pagesRaw))) : 5;
   const retryHours = [6, 12, 24, 48, 72].indexOf(retryRaw) >= 0 ? retryRaw : 24;
   return {
-    enabled: enabledRaw === null || enabledRaw === '' ? true : enabledRaw === 'true',
+    enabled: enabledRaw === null || enabledRaw === '' ? true : String(enabledRaw).toLowerCase() === 'true',
     runsPerDay: runsPerDay,
     batchSize: batchSize,
     pagesPerSite: pagesPerSite,
     retryHours: retryHours,
     maxPerDay: runsPerDay * batchSize
   };
+}
+
+/** Compatibility endpoint for settings saved through the legacy webhook. */
+function saveOhioEmailResearchSettings(settings) {
+  settings = settings || {};
+  const normalized = {
+    enabled: !!settings.enabled,
+    runsPerDay: Number(settings.runsPerDay),
+    batchSize: Number(settings.batchSize),
+    pagesPerSite: Number(settings.pagesPerSite),
+    retryHours: Number(settings.retryHours)
+  };
+  if ([1, 2, 3, 4, 6, 8].indexOf(normalized.runsPerDay) < 0 ||
+      !Number.isInteger(normalized.batchSize) || normalized.batchSize < 10 ||
+      normalized.batchSize > 100 || normalized.batchSize % 5 !== 0 ||
+      !Number.isInteger(normalized.pagesPerSite) || normalized.pagesPerSite < 3 ||
+      normalized.pagesPerSite > 8 || [6, 12, 24, 48, 72].indexOf(normalized.retryHours) < 0) {
+    throw new Error('One or more email research settings are invalid.');
+  }
+  const ss = getAutomationSpreadsheet_();
+  let sheet = ss.getSheetByName('App Settings');
+  if (!sheet) sheet = ss.insertSheet('App Settings');
+  if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, 2).setValues([['Setting', 'Value']]);
+  const rows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getDisplayValues() : [];
+  Object.keys(normalized).forEach(function(key) {
+    const index = rows.findIndex(function(row) { return String(row[0] || '').trim() === key; });
+    if (index >= 0) sheet.getRange(index + 2, 2).setValue(normalized[key]);
+    else sheet.appendRow([key, normalized[key]]);
+  });
+  return getEmailResearchSettings_();
 }
 
 function getEmailQueue_(limit) {
