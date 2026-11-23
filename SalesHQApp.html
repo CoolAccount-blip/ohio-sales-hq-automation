@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{--bg:#f5f7fb;--panel:#fff;--ink:#172033;--muted:#788398;--line:#e8ecf3;--blue:#315efb;--blueSoft:#edf2ff;--green:#0d9b72;--shadow:0 8px 28px rgba(25,40,75,.06)}
+    [data-theme="dark"]{--bg:#101522;--panel:#192131;--ink:#edf2fa;--muted:#9ba8bc;--line:#2a3548;--blue:#7794ff;--blueSoft:#263455;--green:#48c69a;--shadow:0 8px 28px rgba(0,0,0,.16)}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .shell{min-height:100vh;display:grid;grid-template-columns:230px 1fr}.side{background:var(--panel);border-right:1px solid var(--line);padding:26px 16px;display:flex;flex-direction:column}
+    .brand{display:flex;align-items:center;gap:11px;padding:0 10px 28px;font-weight:800;letter-spacing:-.4px;font-size:16px}.logo{width:34px;height:34px;border-radius:11px;background:#172d68;color:white;display:grid;place-items:center;font-size:17px}
+    .navlabel{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:1.2px;padding:12px 12px 8px}.nav button{width:100%;border:0;background:transparent;color:var(--muted);padding:11px 12px;border-radius:10px;text-align:left;display:flex;align-items:center;gap:12px;font:600 13px inherit;cursor:pointer;margin:2px 0}
+    .nav button.active{background:var(--blueSoft);color:var(--blue)}.nav .ico{width:18px;text-align:center;font-size:16px}.sidebottom{margin-top:auto;padding:14px 10px;color:var(--muted);font-size:11px}
+    main{padding:34px clamp(20px,4vw,54px);max-width:1500px;width:100%;margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);font-weight:800}.title{font-size:28px;letter-spacing:-1px;font-weight:800;margin:4px 0}.subtitle{color:var(--muted);font-size:13px}.topright{display:flex;gap:10px;align-items:center}
+    .pill{border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:var(--panel);color:var(--muted);font-size:12px}.avatar{width:34px;height:34px;border-radius:50%;background:var(--blueSoft);color:var(--blue);display:grid;place-items:center;font-weight:800}
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:19px;box-shadow:var(--shadow)}.metrichead{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;font-weight:600}.metricicon{width:31px;height:31px;border-radius:10px;background:var(--blueSoft);display:grid;place-items:center;color:var(--blue)}.metricnum{font-size:29px;letter-spacing:-1px;font-weight:800;margin:12px 0 2px}.metricfoot{font-size:11px;color:var(--muted)}
+    .layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr);gap:16px}.sectiontitle{font-size:15px;font-weight:800;margin:0 0 4px}.sectiondesc{color:var(--muted);font-size:12px;margin-bottom:18px}
+    .action{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}.action:first-of-type{border-top:0}.actionicon{width:36px;height:36px;border-radius:11px;background:var(--blueSoft);display:grid;place-items:center;color:var(--blue);flex:none}.actiontext{flex:1}.actionname{font-size:13px;font-weight:700}.actionsub{font-size:11px;color:var(--muted)}.arrow{color:var(--muted)}
+    .statusline{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid var(--line);font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}.btn{border:0;border-radius:10px;background:var(--blue);color:white;padding:10px 15px;font-weight:700;cursor:pointer}.btn.secondary{background:var(--blueSoft);color:var(--blue)}.btn:disabled{opacity:.5;cursor:wait}
+    .toolbar{display:flex;gap:10px;align-items:center;margin:18px 0}.search{flex:1;max-width:420px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:11px 13px;outline:none}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}table{border-collapse:collapse;width:100%;min-width:720px}th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:13px 15px;background:var(--bg);font-weight:800}td{padding:14px 15px;border-top:1px solid var(--line);font-size:12px}td strong{font-size:13px}.muted{color:var(--muted)}.tag{background:var(--blueSoft);color:var(--blue);border-radius:99px;padding:4px 8px;font-size:10px;font-weight:700;white-space:nowrap}
+    .settingsgrid{display:grid;grid-template-columns:minmax(0,720px);gap:15px}.fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin:14px 0}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:7px}.field select{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:11px;border-radius:9px}.checkrow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid var(--line)}.toggle{accent-color:var(--blue);width:18px;height:18px}
+    .empty{padding:35px;text-align:center;color:var(--muted)}.pager{display:flex;align-items:center;justify-content:space-between;margin-top:14px;color:var(--muted);font-size:12px}.hidden{display:none!important}.notice{margin-top:12px;color:var(--muted);font-size:12px}.compact main{padding-top:22px}.compact .card{padding:14px}.compact td{padding:10px 12px}
+    @media(max-width:900px){.shell{grid-template-columns:72px 1fr}.side{padding:20px 9px}.brand{padding:0 8px 25px}.brandname,.navlabel,.navtext,.sidebottom{display:none}.nav button{justify-content:center;padding:12px 5px}.metrics{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}
+    @media(max-width:580px){.shell{display:block}.side{position:sticky;top:0;z-index:5;border-right:0;border-bottom:1px solid var(--line);padding:8px;display:block}.brand{display:none}.nav{display:flex;justify-content:space-around}.nav button{width:auto;margin:0;padding:10px}.nav .ico{font-size:17px}.navtext,.navlabel{display:none}main{padding:22px 14px}.metrics{gap:9px}.card{padding:14px}.metricnum{font-size:24px}.title{font-size:24px}.top{align-items:flex-start}.topright .pill{display:none}.fieldrow{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="shell" id="app">
+  <aside class="side">
+    <div class="brand"><div class="logo">O</div><span class="brandname">OHIO SALES HQ</span></div>
+    <div class="navlabel">WORKSPACE</div>
+    <nav class="nav">
+      <button class="active" data-page="home" onclick="go('home')"><span class="ico">⌂</span><span class="navtext">Overview</span></button>
+      <button data-page="leads" onclick="go('leads')"><span class="ico">◉</span><span class="navtext">Leads</span></button>
+      <button data-page="calls" onclick="go('calls')"><span class="ico">↗</span><span class="navtext">Call queue</span></button>
+      <button data-page="settings" onclick="go('settings')"><span class="ico">⚙</span><span class="navtext">Settings</span></button>
+    </nav>
+    <div class="sidebottom">Your business, in one place.<br>Ohio Sales HQ · Private workspace</div>
+  </aside>
+  <main>
+    <div class="top"><div><div class="eyebrow" id="eyebrow">WORKSPACE / OVERVIEW</div><div class="title" id="pageTitle">Good evening</div><div class="subtitle" id="pageSubtitle">A clear view of what needs your attention.</div></div><div class="topright"><span class="pill" id="connection">Connecting…</span><div class="avatar">S</div></div></div>
+    <section id="home">
+      <div class="metrics">
+        <div class="card"><div class="metrichead"><span>Total leads</span><span class="metricicon">◉</span></div><div class="metricnum" id="mProspects">—</div><div class="metricfoot">Businesses in your prospect list</div></div>
+        <div class="card"><div class="metrichead"><span>Discovered</span><span class="metricicon">⌕</span></div><div class="metricnum" id="mInbox">—</div><div class="metricfoot">New businesses to review</div></div>
+        <div class="card"><div class="metrichead"><span>Emails found</span><span class="metricicon">✉</span></div><div class="metricnum" id="mFound">—</div><div class="metricfoot">Public business emails collected</div></div>
+        <div class="card"><div class="metrichead"><span>Call queue</span><span class="metricicon">☎</span></div><div class="metricnum" id="mCalls">—</div><div class="metricfoot">Businesses waiting for a call</div></div>
+      </div>
+      <div class="layout">
+        <div class="card"><h3 class="sectiontitle">Your next steps</h3><div class="sectiondesc">Pick up where you left off.</div>
+          <div class="action" onclick="go('leads')" style="cursor:pointer"><div class="actionicon">◉</div><div class="actiontext"><div class="actionname">Review your leads</div><div class="actionsub">Search businesses and check their contact details</div></div><span class="arrow">→</span></div>
+          <div class="action" onclick="go('calls')" style="cursor:pointer"><div class="actionicon">☎</div><div class="actiontext"><div class="actionname">Make your next call</div><div class="actionsub">Open a business number in your Mac calling app</div></div><span class="arrow">→</span></div>
+          <div class="action" onclick="go('settings')" style="cursor:pointer"><div class="actionicon">⚙</div><div class="actiontext"><div class="actionname">Adjust your workflow</div><div class="actionsub">Tune email research and personalize the app</div></div><span class="arrow">→</span></div>
+        </div>
+        <div class="card"><h3 class="sectiontitle">Automation status</h3><div class="sectiondesc">Your background email research.</div>
+          <div class="statusline"><span>Email research</span><strong id="researchState">—</strong></div>
+          <div class="statusline"><span>Last started</span><span id="lastRun" class="muted">—</span></div>
+          <div class="statusline"><span>Last completed</span><span id="lastComplete" class="muted">—</span></div>
+          <div style="padding-top:15px"><button class="btn secondary" onclick="go('settings')">Manage settings</button></div>
+        </div>
+      </div>
+    </section>
+    <section id="leads" class="hidden">
+      <div class="toolbar"><input id="leadSearch" class="search" placeholder="Search business, city, phone, email…" oninput="debouncedLeads()"><button class="btn secondary" onclick="loadLeads(1)">Refresh</button></div>
+      <div class="tablewrap"><table><thead><tr><th>Business</th><th>Location</th><th>Industry</th><th>Public email</th><th>Phone</th><th>Score</th></tr></thead><tbody id="leadRows"><tr><td colspan="6" class="empty">Loading leads…</td></tr></tbody></table></div>
+      <div class="pager"><span id="leadCount">—</span><span><button class="btn secondary" onclick="pageLeads(-1)">←</button> <button class="btn secondary" onclick="pageLeads(1)">→</button></span></div>
+    </section>
+    <section id="calls" class="hidden">
+      <div class="toolbar"><input id="callSearch" class="search" placeholder="Find a business…" oninput="loadCalls()"><button class="btn secondary" onclick="loadCalls()">Refresh</button></div>
+      <div class="tablewrap"><table><thead><tr><th>Business</th><th>Location</th><th>Phone</th><th>Fit score</th><th>Outcome</th><th>Call</th></tr></thead><tbody id="callRows"><tr><td colspan="6" class="empty">Loading call queue…</td></tr></tbody></table></div>
+      <div class="notice">Calls open through the calling app configured on your Mac. Your iPhone must have Calls on Other Devices enabled for Continuity calling.</div>
+    </section>
+    <section id="settings" class="hidden">
+      <div class="settingsgrid">
+        <div class="card"><h3 class="sectiontitle">Email research</h3><div class="sectiondesc">Control how often the background worker checks business websites. Changes apply to future runs.</div>
+          <div class="checkrow"><div><strong>Automatic research</strong><div class="muted">Pause or resume website checks</div></div><input class="toggle" id="enabled" type="checkbox"></div>
+          <div class="fieldrow"><div class="field"><label>Runs per day</label><select id="runs"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div>
+          <div class="field"><label>Websites per run</label><select id="batch"><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>90</option><option>100</option></select></div></div>
+          <div class="fieldrow"><div class="field"><label>Pages per website</label><select id="pages"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+          <div class="field"><label>Retry after</label><select id="retry"><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option></select></div></div>
+          <div class="notice" id="capacity">Daily website-check capacity: —</div><div style="margin-top:18px"><button class="btn" onclick="saveResearch()">Save research settings</button></div>
+        </div>
+        <div class="card"><h3 class="sectiontitle">Appearance</h3><div class="sectiondesc">Make the workspace feel right to use.</div>
+          <div class="field"><label>Color theme</label><select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></div>
+          <div class="checkrow"><div><strong>Compact layout</strong><div class="muted">Tighter spacing and denser tables</div></div><input class="toggle" id="compact" type="checkbox"></div>
+          <button class="btn secondary" onclick="saveAppearance()">Save appearance</button>
+        </div>
+      </div>
+    </section>
+    <div class="notice" id="message" aria-live="polite"></div>
+  </main>
+</div>
+<script>
+let currentPage='home', leadPage=1, leadPages=1, leadTimer;
+const $=id=>document.getElementById(id);
+function msg(t){$('message').textContent=t||''}
+function fail(e){msg((e&&e.message)||String(e))}
+function go(page){
+  currentPage=page;
+  ['home','leads','calls','settings'].forEach(p=>$(p).classList.toggle('hidden',p!==page));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  const meta={home:['WORKSPACE / OVERVIEW','Good evening','A clear view of what needs your attention.'],leads:['WORKSPACE / LEADS','Your leads','Find and review the businesses in your pipeline.'],calls:['WORKSPACE / CALLS','Call queue','Work through businesses that need a phone-first introduction.'],settings:['WORKSPACE / SETTINGS','Your settings','Adjust your automation and personalize the workspace.']}[page];
+  $('eyebrow').textContent=meta[0];$('pageTitle').textContent=meta[1];$('pageSubtitle').textContent=meta[2];msg('');
+  if(page==='leads')loadLeads(1);if(page==='calls')loadCalls();
+}
+function refresh(){
+  google.script.run.withSuccessHandler(d=>{
+    $('connection').textContent='Connected';$('mProspects').textContent=d.metrics.prospects.toLocaleString();$('mInbox').textContent=d.metrics.inbox.toLocaleString();$('mFound').textContent=d.metrics.found.toLocaleString();$('mCalls').textContent=d.metrics.callQueue.toLocaleString();
+    $('researchState').innerHTML='<span class="dot"></span>'+(d.settings.enabled?'Active':'Paused');
+    $('lastRun').textContent=d.activity.lastRun||'Not run yet';$('lastComplete').textContent=d.activity.lastCompleted||'Not completed yet';
+    $('enabled').checked=d.settings.enabled;$('runs').value=String(d.settings.runsPerDay);$('batch').value=String(d.settings.batchSize);$('pages').value=String(d.settings.pagesPerSite);$('retry').value=String(d.settings.retryHours);
+    $('theme').value=d.preferences.theme;$('compact').checked=d.preferences.compact;applyPrefs(d.preferences);capacity();
+  }).withFailureHandler(e=>{$('connection').textContent='Not connected';fail(e)}).getOhioSalesHQAppData();
+}
+function debouncedLeads(){clearTimeout(leadTimer);leadTimer=setTimeout(()=>loadLeads(1),250)}
+function loadLeads(page){
+  leadPage=page||1;$('leadRows').innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  google.script.run.withSuccessHandler(d=>{
+    leadPages=d.pages;$('leadCount').textContent=d.total.toLocaleString()+' businesses · page '+d.page+' of '+d.pages;
+    $('leadRows').innerHTML=d.rows.length?d.rows.map(r=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="muted">'+esc(r.status)+'</div></td><td>'+esc(r.city)+'</td><td>'+esc(r.industry)+'</td><td>'+ (r.email?'<a href="mailto:'+escAttr(r.email)+'">'+esc(r.email)+'</a>':'<span class="muted">Not found</span>')+'</td><td>'+esc(r.phone)+'</td><td><span class="tag">'+esc(r.score||'—')+'</span></td></tr>').join(''):'<tr><td colspan="6" class="empty">No matching leads found.</td></tr>';
+  }).withFailureHandler(fail).getOhioSalesHQLeads($('leadSearch').value,leadPage,25);
+}
+function pageLeads(delta){loadLeads(Math.max(1,Math.min(leadPages,leadPage+delta)))}
+function loadCalls(){
+  $('callRows').innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  google.script.run.withSuccessHandler(rows=>{
+    $('callRows').innerHTML=rows.length?rows.map(r=>'<tr><td><strong>'+esc(r.name)+'</strong><div class="muted">'+esc(r.industry)+'</div></td><td>'+esc(r.city)+'</td><td>'+esc(r.phone)+'</td><td><span class="tag">'+esc(r.score||'—')+'</span></td><td>'+esc(r.outcome||'Ready to Call')+'</td><td>'+(r.phone?'<a class="btn" href="tel:'+escAttr(normalizePhone(r.phone))+'">Call</a>':'—')+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">Your call queue is empty. Refresh it from the spreadsheet controls first.</td></tr>';
+  }).withFailureHandler(fail).getOhioSalesHQCallLeads($('callSearch').value);
+}
+function normalizePhone(v){let d=String(v).replace(/\D/g,'');if(d.length===10)return '+1'+d;if(d.length===11&&d[0]==='1')return '+'+d;return d}
+function capacity(){$('capacity').textContent='Daily website-check capacity: '+(Number($('runs').value)*Number($('batch').value))+' checks'}
+['runs','batch'].forEach(id=>$(id).addEventListener('change',capacity));
+function saveResearch(){
+  msg('Saving settings…');
+  const x={enabled:$('enabled').checked,runsPerDay:Number($('runs').value),batchSize:Number($('batch').value),pagesPerSite:Number($('pages').value),retryHours:Number($('retry').value)};
+  google.script.run.withSuccessHandler(()=>{msg('Research settings saved.');refresh()}).withFailureHandler(fail).saveOhioEmailResearchSettings(x);
+}
+function applyPrefs(p){document.body.dataset.theme=p.theme;document.body.classList.toggle('compact',!!p.compact)}
+function saveAppearance(){
+  const p={theme:$('theme').value,compact:$('compact').checked};
+  google.script.run.withSuccessHandler(saved=>{applyPrefs(saved);msg('Appearance saved.')}).withFailureHandler(fail).saveOhioSalesHQPreferences(p);
+}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escAttr(v){return esc(v)}
+refresh();
+</script>
+</body>
+</html>
