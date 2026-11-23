@@ -37,8 +37,10 @@ function installOhioCallQueue() {
 }
 
 function callSelectedOhioLeadOnMac() {
-  const ss = (typeof getAutomationSpreadsheet_ === 'function')
-    ? getAutomationSpreadsheet_() : SpreadsheetApp.getActiveSpreadsheet();
+  // This is a spreadsheet menu action. Use the spreadsheet currently open
+  // in the user's browser, not the saved automation ID (which can point to
+  // another workbook and therefore a different active tab).
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const sh = ss && ss.getActiveSheet();
   if (!sh || sh.getName() !== OHIO_CALL_QUEUE.SHEET) {
